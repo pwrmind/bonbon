@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lottie PWA Editor Prototype</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
+<style>
+:root {
+  --bg-1: #1e1e1e;
+  --bg-2: #252526;
+  --bg-3: #2d2d30;
+  --border: #3e3e42;
+  --accent: #0e639c;
+  --accent-hover: #1177bb;
+  --text: #ccc;
+  --text-dim: #888;
+  --playhead: #ff4444;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg-1);
+}
+
+lottie-editor { display: block; height: 100vh; }
+
+.app-grid {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  grid-template-rows: 48px 1fr 240px;
+  height: 100vh;
+}
+.toolbar { grid-column: 1 / -1; grid-row: 1; }
+.sidebar { grid-column: 1; grid-row: 2 / 4; }
+.stage { grid-column: 2; grid-row: 2; }
+.timeline-area { grid-column: 2; grid-row: 3; }
+
+/* ---------- Toolbar ---------- */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  background: var(--bg-3);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+.toolbar button {
+  padding: 6px 12px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.toolbar button:hover { background: var(--accent-hover); }
+.toolbar .sep { width: 1px; height: 24px; background: var(--border); margin: 0 4px; flex-shrink: 0; }
+.toolbar .frame-display {
+  font-family: 'Consolas', monospace;
+  padding: 4px 10px;
+  background: #1a1a1a;
+  border-radius: 4px;
+  min-width: 130px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* ---------- Sidebar ---------- */
+.sidebar {
+  background: var(--bg-2);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.layers-list { min-height: 100%; }
+.layer-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+}
+.layer-item:hover { background: var(--bg-3); }
+.layer-item.selected { background: var(--accent); color: white; }
+.layer-item .icon { font-size: 13px; width: 16px; text-align: center; }
+.layer-item .name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.layer-item .index {
+  font-family: 'Consolas', monospace;
+  font-size: 10px;
+  opacity: 0.5;
+}
+
+/* ---------- Stage ---------- */
+.stage {
+  background: #1a1a1a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  position: relative;
+}
+.preview-container {
+  background: #111;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  border-radius: 4px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.lottie-mount { width: 100%; height: 100%; }
+.lottie-mount svg { display: block; }
+
+/* ---------- Timeline ---------- */
+.timeline-area {
+  background: var(--bg-2);
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+.timeline-ruler {
+  height: 28px;
+  background: var(--bg-3);
+  border-bottom: 1px solid var(--border);
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+  user-select: none;
+}
+.ruler-tick {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-left: 1px solid var(--border);
+  padding-left: 4px;
+  font-size: 10px;
+  color: var(--text-dim);
+  line-height: 28px;
+  pointer-events: none;
+}
+.timeline-rows {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+}
+.timeline-row {
+  height: 36px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.time-bar {
+  position: absolute;
+  top: 8px;
+  height: 20px;
+  background: linear-gradient(180deg, #4a90e2, #357abd);
+  border-radius: 3px;
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  min-width: 8px;
+  user-select: none;
+  touch-action: none;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.time-bar:hover { background: linear-gradient(180deg, #5a9cec, #4085c7); }
+.time-bar:active { cursor: grabbing; }
+.time-bar.selected { outline: 2px solid #ffb700; }
+
+.playhead {
+  position: absolute;
+  top: 28px;
+  bottom: 0;
+  width: 2px;
+  background: var(--playhead);
+  pointer-events: none;
+  z-index: 10;
+}
+.playhead::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -6px;
+  width: 14px;
+  height: 12px;
+  background: var(--playhead);
+  border-radius: 0 0 4px 4px;
+}
+
+/* ---------- JSON Panel ---------- */
+.json-panel {
+  position: absolute;
+  top: 48px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg-1);
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+}
+.json-panel textarea {
+  flex: 1;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  border: none;
+  padding: 16px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 13px;
+  resize: none;
+  outline: none;
+  line-height: 1.5;
+  tab-size: 2;
+}
+.json-error {
+  padding: 8px 16px;
+  background: #5a1d1d;
+  color: #ffcccc;
+  font-family: monospace;
+  font-size: 12px;
+  display: none;
+}
+.json-error.visible { display: block; }
+</style>
+</head>
+<body>
+<lottie-editor></lottie-editor>
+
+<script>
+// ============================================================
+// ДЕМО-АНИМАЦИЯ: красный круг едет вправо, синий квадрат
+// появляется позже и едет вниз.
+// ============================================================
+const DEMO_LOTTIE = {
+  "v": "5.12.2",
+  "fr": 30,
+  "ip": 0,
+  "op": 90,
+  "w": 500,
+  "h": 500,
+  "nm": "Demo",
+  "ddd": 0,
+  "assets": [],
+  "layers": [
+    {
+      "ddd": 0, "ind": 1, "ty": 4, "nm": "Red Circle", "sr": 1,
+      "ks": {
+        "o": { "a": 0, "k": 100 },
+        "r": { "a": 0, "k": 0 },
+        "p": {
+          "a": 1, "k": [
+            { "i": { "x": [0.5], "y": [0.5] }, "o": { "x": [0.5], "y": [0.5] }, "t": 0, "s": [100, 250, 0] },
+            { "t": 60, "s": [400, 250, 0] }
+          ]
+        },
+        "a": { "a": 0, "k": [0, 0, 0] },
+        "s": { "a": 0, "k": [100, 100, 100] }
+      },
+      "ao": 0,
+      "shapes": [{
+        "ty": "gr",
+        "it": [
+          { "ty": "el", "d": 1, "s": { "a": 0, "k": [80, 80] }, "p": { "a": 0, "k": [0, 0] }, "nm": "Ellipse" },
+          { "ty": "fl", "c": { "a": 0, "k": [1, 0.2, 0.2, 1] }, "o": { "a": 0, "k": 100 }, "r": 1, "nm": "Fill" },
+          { "ty": "tr", "p": { "a": 0, "k": [0, 0] }, "a": { "a": 0, "k": [0, 0] }, "s": { "a": 0, "k": [100, 100] }, "r": { "a": 0, "k": 0 }, "o": { "a": 0, "k": 100 }, "nm": "Transform" }
+        ],
+        "nm": "Circle Group"
+      }],
+      "ip": 0, "op": 60, "st": 0, "bm": 0
+    },
+    {
+      "ddd": 0, "ind": 2, "ty": 4, "nm": "Blue Square", "sr": 1,
+      "ks": {
+        "o": {
+          "a": 1, "k": [
+            { "i": { "x": [0.5], "y": [0.5] }, "o": { "x": [0.5], "y": [0.5] }, "t": 30, "s": [0] },
+            { "t": 45, "s": [100] }
+          ]
+        },
+        "r": { "a": 0, "k": 0 },
+        "p": {
+          "a": 1, "k": [
+            { "i": { "x": [0.5], "y": [0.5] }, "o": { "x": [0.5], "y": [0.5] }, "t": 45, "s": [250, 100, 0] },
+            { "t": 80, "s": [250, 400, 0] }
+          ]
+        },
+        "a": { "a": 0, "k": [0, 0, 0] },
+        "s": { "a": 0, "k": [100, 100, 100] }
+      },
+      "ao": 0,
+      "shapes": [{
+        "ty": "gr",
+        "it": [
+          { "ty": "rc", "d": 1, "s": { "a": 0, "k": [80, 80] }, "p": { "a": 0, "k": [0, 0] }, "r": { "a": 0, "k": 8 }, "nm": "Rect" },
+          { "ty": "fl", "c": { "a": 0, "k": [0.2, 0.4, 1, 1] }, "o": { "a": 0, "k": 100 }, "r": 1, "nm": "Fill" },
+          { "ty": "tr", "p": { "a": 0, "k": [0, 0] }, "a": { "a": 0, "k": [0, 0] }, "s": { "a": 0, "k": [100, 100] }, "r": { "a": 0, "k": 0 }, "o": { "a": 0, "k": 100 }, "nm": "Transform" }
+        ],
+        "nm": "Square Group"
+      }],
+      "ip": 30, "op": 90, "st": 0, "bm": 0
+    }
+  ]
+};
+
+// ============================================================
+// КОРНЕВОЙ ВЕБ-КОМПОНЕНТ
+// ============================================================
+class LottieEditor extends HTMLElement {
+  constructor() {
+    super();
+    this.lottieData = JSON.parse(JSON.stringify(DEMO_LOTTIE));
+    this.currentFrame = 0;
+    this.isPlaying = false;
+    this.viewMode = 'visual';
+    this.lastTickTime = 0;
+    this.rafId = null;
+    this.animInstance = null;
+    this.pxPerFrame = 1;
+    this.selectedLayerIndex = -1;
+  }
+
+  connectedCallback() {
+    this.render();
+    this.cacheElements();
+    this.attachEvents();
+    // Дать браузеру вычислить layout, потом отрисовать всё
+    requestAnimationFrame(() => this.renderAll());
+  }
+
+  render() {
+    this.innerHTML = `
+      <div class="app-grid">
+        <div class="toolbar">
+          <button data-action="play">▶ Play</button>
+          <button data-action="stop">⏹ Stop</button>
+          <div class="sep"></div>
+          <div class="frame-display">
+            Frame: <span class="current-frame">0</span> / <span class="total-frames">90</span>
+          </div>
+          <div class="sep"></div>
+          <button data-action="import">📁 Import</button>
+          <button data-action="export">💾 Export</button>
+          <div class="sep"></div>
+          <button data-action="toggle-view">📝 Code View</button>
+          <div style="flex:1"></div>
+          <span style="color:var(--text-dim);font-size:11px;">Lottie Editor Prototype</span>
+        </div>
+
+        <div class="sidebar">
+          <div class="layers-list"></div>
+        </div>
+
+        <div class="stage">
+          <div class="preview-container">
+            <div class="lottie-mount"></div>
+          </div>
+        </div>
+
+        <div class="timeline-area">
+          <div class="timeline-ruler"></div>
+          <div class="timeline-rows"></div>
+          <div class="playhead"></div>
+        </div>
+      </div>
+
+      <div class="json-panel" style="display:none">
+        <div class="json-error"></div>
+        <textarea spellcheck="false"></textarea>
+      </div>
+
+      <input type="file" accept=".json,.lottie" style="display:none" class="file-input">
+    `;
+  }
+
+  cacheElements() {
+    this.toolbar = this.querySelector('.toolbar');
+    this.layersList = this.querySelector('.layers-list');
+    this.lottieMount = this.querySelector('.lottie-mount');
+    this.previewContainer = this.querySelector('.preview-container');
+    this.timelineRuler = this.querySelector('.timeline-ruler');
+    this.timelineRows = this.querySelector('.timeline-rows');
+    this.timelineArea = this.querySelector('.timeline-area');
+    this.playhead = this.querySelector('.playhead');
+    this.currentFrameEl = this.querySelector('.current-frame');
+    this.totalFramesEl = this.querySelector('.total-frames');
+    this.jsonPanel = this.querySelector('.json-panel');
+    this.jsonTextarea = this.querySelector('.json-panel textarea');
+    this.jsonError = this.querySelector('.json-error');
+    this.fileInput = this.querySelector('.file-input');
+  }
+
+  attachEvents() {
+    this.toolbar.addEventListener('click', (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      const action = btn.dataset.action;
+      if (action === 'play') this.togglePlay();
+      else if (action === 'stop') this.stop();
+      else if (action === 'import') this.fileInput.click();
+      else if (action === 'export') this.exportJson();
+      else if (action === 'toggle-view') this.toggleView();
+    });
+
+    this.fileInput.addEventListener('change', (e) => this.handleFileImport(e));
+
+    // Клик/перетаскивание по линейке — перемотка
+    this.timelineRuler.addEventListener('pointerdown', (e) => {
+      this.timelineRuler.setPointerCapture(e.pointerId);
+      this.seekFromEvent(e);
+      const onMove = (ev) => this.seekFromEvent(ev);
+      const onUp = (ev) => {
+        this.timelineRuler.removeEventListener('pointermove', onMove);
+        this.timelineRuler.removeEventListener('pointerup', onUp);
+        try { this.timelineRuler.releasePointerCapture(ev.pointerId); } catch (_) {}
+      };
+      this.timelineRuler.addEventListener('pointermove', onMove);
+      this.timelineRuler.addEventListener('pointerup', onUp);
+    });
+
+    // JSON-редактор: debounce 500 мс
+    let debounceTimer;
+    this.jsonTextarea.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => this.applyJsonFromEditor(), 500);
+    });
+
+    window.addEventListener('resize', () => this.renderTimeline());
+  }
+
+  // ---------- РЕНДЕР ----------
+  renderAll() {
+    this.totalFramesEl.textContent = this.lottieData.op;
+    this.initLottie();
+    this.renderLayersList();
+    this.renderTimeline();
+    this.updatePlayhead();
+    this.updateFrameDisplay();
+  }
+
+  initLottie() {
+    if (this.animInstance) {
+      try { this.animInstance.destroy(); } catch (_) {}
+      this.animInstance = null;
+    }
+    this.lottieMount.innerHTML = '';
+
+    const w = this.lottieData.w || 500;
+    const h = this.lottieData.h || 500;
+    this.previewContainer.style.width = w + 'px';
+    this.previewContainer.style.height = h + 'px';
+
+    this.animInstance = lottie.loadAnimation({
+      container: this.lottieMount,
+      renderer: 'svg',
+      loop: false,
+      autoplay: false,
+      animationData: JSON.parse(JSON.stringify(this.lottieData))
+    });
+
+    this.animInstance.addEventListener('DOMLoaded', () => {
+      const svg = this.lottieMount.querySelector('svg');
+      if (svg) {
+        svg.style.width = '100%';
+        svg.style.height = '100%';
+        svg.style.display = 'block';
+      }
+      this.animInstance.goToAndStop(this.currentFrame, true);
+    });
+  }
+
+  reloadLottie() {
+    this.initLottie();
+  }
+
+  renderLayersList() {
+    this.layersList.innerHTML = '';
+    this.lottieData.layers.forEach((layer, i) => {
+      const item = document.createElement('div');
+      item.className = 'layer-item';
+      if (i === this.selectedLayerIndex) item.classList.add('selected');
+      let icon = '◦';
+      if (layer.ty === 4) icon = '⬛';
+      else if (layer.ty === 5) icon = 'T';
+      else if (layer.ty === 2) icon = '🖼';
+      else if (layer.ty === 1) icon = '▭';
+
+      item.innerHTML = `
+        <span class="icon">${icon}</span>
+        <span class="name">${this.escapeHtml(layer.nm || 'Layer ' + i)}</span>
+        <span class="index">#${i}</span>
+      `;
+      item.addEventListener('click', () => {
+        this.selectedLayerIndex = i;
+        this.renderLayersList();
+        this.renderTimeline();
+      });
+      this.layersList.appendChild(item);
+    });
+  }
+
+  escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  renderTimeline() {
+    const totalFrames = this.lottieData.op || 1;
+    const fps = this.lottieData.fr || 30;
+    const width = this.timelineArea.clientWidth || 800;
+    this.pxPerFrame = width / totalFrames;
+
+    // Линейка
+    this.timelineRuler.innerHTML = '';
+    const totalSeconds = Math.floor(totalFrames / fps);
+    for (let s = 0; s <= totalSeconds; s++) {
+      const frame = s * fps;
+      const x = frame * this.pxPerFrame;
+      if (x > width) break;
+      const tick = document.createElement('div');
+      tick.className = 'ruler-tick';
+      tick.style.left = x + 'px';
+      tick.textContent = s + 's';
+      this.timelineRuler.appendChild(tick);
+    }
+
+    // Строки и полосы
+    this.timelineRows.innerHTML = '';
+    this.lottieData.layers.forEach((layer, i) => {
+      const row = document.createElement('div');
+      row.className = 'timeline-row';
+
+      const bar = document.createElement('div');
+      bar.className = 'time-bar';
+      if (i === this.selectedLayerIndex) bar.classList.add('selected');
+
+      const left = (layer.ip || 0) * this.pxPerFrame;
+      const barWidth = Math.max(((layer.op || 0) - (layer.ip || 0)) * this.pxPerFrame, 8);
+      bar.style.left = left + 'px';
+      bar.style.width = barWidth + 'px';
+      bar.textContent = `${layer.ip}–${layer.op}`;
+      bar.title = `${layer.nm}\nip=${layer.ip} op=${layer.op} st=${layer.st || 0}`;
+
+      this.attachBarDrag(bar, i);
+      row.appendChild(bar);
+      this.timelineRows.appendChild(row);
+    });
+
+    this.updatePlayhead();
+  }
+
+  attachBarDrag(bar, layerIndex) {
+    bar.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      bar.setPointerCapture(e.pointerId);
+
+      const startX = e.clientX;
+      const startLeft = parseFloat(bar.style.left) || 0;
+      let moved = false;
+
+      const onMove = (ev) => {
+        const dx = ev.clientX - startX;
+        if (Math.abs(dx) > 2) moved = true;
+        bar.style.left = Math.max(0, startLeft + dx) + 'px';
+      };
+
+      const onUp = (ev) => {
+        bar.removeEventListener('pointermove', onMove);
+        bar.removeEventListener('pointerup', onUp);
+        try { bar.releasePointerCapture(ev.pointerId); } catch (_) {}
+
+        if (!moved) {
+          this.selectedLayerIndex = layerIndex;
+          this.renderLayersList();
+          this.renderTimeline();
+          return;
+        }
+
+        const dx = ev.clientX - startX;
+        const deltaFrames = Math.round(dx / this.pxPerFrame);
+
+        if (deltaFrames !== 0) {
+          this.shiftLayerTime(layerIndex, deltaFrames);
+        } else {
+          this.renderTimeline(); // вернуть на место
+        }
+      };
+
+      bar.addEventListener('pointermove', onMove);
+      bar.addEventListener('pointerup', onUp);
+    });
+  }
+
+  shiftLayerTime(layerIndex, deltaFrames) {
+    const layer = this.lottieData.layers[layerIndex];
+    if (!layer) return;
+
+    const newIp = Math.max(0, (layer.ip || 0) + deltaFrames);
+    const newOp = Math.max(newIp + 1, (layer.op || 0) + deltaFrames);
+    const newSt = Math.max(0, (layer.st || 0) + deltaFrames);
+
+    layer.ip = newIp;
+    layer.op = newOp;
+    layer.st = newSt;
+
+    this.reloadLottie();
+    this.renderTimeline();
+    this.refreshJsonIfVisible();
+  }
+
+  updatePlayhead() {
+    if (!this.pxPerFrame) return;
+    const x = this.currentFrame * this.pxPerFrame;
+    this.playhead.style.left = x + 'px';
+  }
+
+  updateFrameDisplay() {
+    this.currentFrameEl.textContent = Math.round(this.currentFrame);
+  }
+
+  seekFromEvent(e) {
+    const rect = this.timelineRuler.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const frame = Math.max(0, Math.min(this.lottieData.op, x / this.pxPerFrame));
+    this.currentFrame = frame;
+    if (this.animInstance) this.animInstance.goToAndStop(frame, true);
+    this.updatePlayhead();
+    this.updateFrameDisplay();
+  }
+
+  // ---------- ВОСПРОИЗВЕДЕНИЕ ----------
+  togglePlay() {
+    if (this.isPlaying) this.pause();
+    else this.play();
+  }
+
+  play() {
+    if (this.isPlaying) return;
+    this.isPlaying = true;
+    this.lastTickTime = performance.now();
+    const btn = this.toolbar.querySelector('[data-action="play"]');
+    if (btn) btn.textContent = '⏸ Pause';
+    this.tick();
+  }
+
+  pause() {
+    this.isPlaying = false;
+    const btn = this.toolbar.querySelector('[data-action="play"]');
+    if (btn) btn.textContent = '▶ Play';
+    if (this.rafId) cancelAnimationFrame(this.rafId);
+    this.rafId = null;
+  }
+
+  stop() {
+    this.pause();
+    this.currentFrame = 0;
+    if (this.animInstance) this.animInstance.goToAndStop(0, true);
+    this.updatePlayhead();
+    this.updateFrameDisplay();
+  }
+
+  tick() {
+    if (!this.isPlaying) return;
+    const now = performance.now();
+    const dt = (now - this.lastTickTime) / 1000;
+    this.lastTickTime = now;
+
+    this.currentFrame += dt * (this.lottieData.fr || 30);
+    if (this.currentFrame >= this.lottieData.op) {
+      this.currentFrame = 0;
+    }
+
+    if (this.animInstance) this.animInstance.goToAndStop(this.currentFrame, true);
+    this.updatePlayhead();
+    this.updateFrameDisplay();
+
+    this.rafId = requestAnimationFrame(() => this.tick());
+  }
+
+  // ---------- ПЕРЕКЛЮЧЕНИЕ РЕЖИМА ----------
+  toggleView() {
+    this.viewMode = this.viewMode === 'visual' ? 'code' : 'visual';
+    const btn = this.toolbar.querySelector('[data-action="toggle-view"]');
+    if (this.viewMode === 'code') {
+      btn.textContent = '🎬 Visual View';
+      this.jsonPanel.style.display = 'flex';
+      this.jsonTextarea.value = JSON.stringify(this.lottieData, null, 2);
+      this.jsonError.classList.remove('visible');
+    } else {
+      btn.textContent = '📝 Code View';
+      this.jsonPanel.style.display = 'none';
+    }
+  }
+
+  refreshJsonIfVisible() {
+    if (this.viewMode === 'code' && document.activeElement !== this.jsonTextarea) {
+      this.jsonTextarea.value = JSON.stringify(this.lottieData, null, 2);
+    }
+  }
+
+  applyJsonFromEditor() {
+    const raw = this.jsonTextarea.value;
+    try {
+      const parsed = JSON.parse(raw);
+      if (!parsed.layers || !Array.isArray(parsed.layers)) {
+        throw new Error('Не найден массив "layers"');
+      }
+      this.lottieData = parsed;
+      this.jsonError.classList.remove('visible');
+      this.currentFrame = Math.min(this.currentFrame, parsed.op || 0);
+      this.totalFramesEl.textContent = parsed.op;
+      this.reloadLottie();
+      this.renderLayersList();
+      this.renderTimeline();
+    } catch (err) {
+      this.jsonError.textContent = '⚠ ' + err.message;
+      this.jsonError.classList.add('visible');
+    }
+  }
+
+  // ---------- ФАЙЛЫ ----------
+  handleFileImport(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        this.lottieData = parsed;
+        this.currentFrame = 0;
+        this.selectedLayerIndex = -1;
+        this.totalFramesEl.textContent = parsed.op;
+        this.reloadLottie();
+        this.renderLayersList();
+        this.renderTimeline();
+        this.refreshJsonIfVisible();
+      } catch (err) {
+        alert('Не удалось разобрать файл: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  }
+
+  exportJson() {
+    const blob = new Blob([JSON.stringify(this.lottieData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'animation.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+}
+
+customElements.define('lottie-editor', LottieEditor);
+</script>
+</body>
+</html>
