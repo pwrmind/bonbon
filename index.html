@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🍭 Bonbon | Lottie Editor v1.0</title>
+<title>🍭 Bonbon | Lottie Editor v1.1</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
 <style>
 :root {
@@ -11,7 +11,7 @@
   --border:#3e3e42; --accent:#0e639c; --accent-h:#1177bb;
   --text:#ccc; --text-dim:#888; --playhead:#ff4444;
   --bar:#4a90e2; --bar-h:#5a9cec; --kf:#ffb700;
-  --phys:#a06cd5;
+  --phys:#a06cd5; --danger:#a33;
 }
 * { box-sizing:border-box; }
 html,body { margin:0; padding:0; height:100%; overflow:hidden; }
@@ -19,7 +19,8 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif
 
 lottie-editor {
   display:grid;
-  grid-template-rows:auto 1fr auto auto;
+  /* КРИТИЧНО: minmax(0, 1fr) не даёт среднему ряду растягиваться по контенту */
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
   height:100vh;
   overflow:hidden;
   background:var(--bg-1);
@@ -31,7 +32,7 @@ lottie-editor {
   background:var(--bg-3); border-bottom:1px solid var(--border);
   position:relative; z-index:100;
 }
-.toolbar button, .toolbar .dropdown > button {
+.toolbar button {
   padding:5px 10px; background:var(--accent); color:#fff; border:none;
   border-radius:4px; font-size:12px; cursor:pointer; white-space:nowrap;
 }
@@ -46,18 +47,6 @@ lottie-editor {
   font-family:'Consolas',monospace; color:var(--text-dim); min-width:44px; text-align:center;
   padding:4px 4px;
 }
-.dropdown { position:relative; display:inline-block; }
-.dropdown-menu {
-  display:none; position:fixed; background:var(--bg-3);
-  border:1px solid var(--border); border-radius:4px; min-width:170px;
-  z-index:1000; box-shadow:0 6px 24px rgba(0,0,0,0.6); padding:4px;
-}
-.dropdown.open .dropdown-menu { display:block; }
-.dropdown-menu button {
-  display:block; width:100%; text-align:left; padding:7px 10px;
-  background:transparent; border:none; color:var(--text); border-radius:3px; font-size:12px;
-}
-.dropdown-menu button:hover { background:var(--accent); color:#fff; }
 
 /* ---------- Stage ---------- */
 .stage { background:#1a1a1a; display:flex; align-items:center; justify-content:center; overflow:auto; min-height:0; }
@@ -65,15 +54,38 @@ lottie-editor {
 .lottie-mount { width:100%; height:100%; }
 .lottie-mount svg { display:block; }
 
-/* ---------- Foldable panels ---------- */
-foldable-panel { display:block; min-height:32px; }
+/* ---------- Panel actions (in header slot) ---------- */
+.panel-actions {
+  display:flex; align-items:center; gap:4px;
+}
+.panel-actions button {
+  height:22px;
+  padding:0 8px;
+  background:var(--bg-2);
+  color:var(--text);
+  border:1px solid var(--border);
+  border-radius:3px;
+  font-size:11px;
+  font-family:inherit;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  white-space:nowrap;
+  gap:4px;
+}
+.panel-actions button:hover { background:var(--accent); color:#fff; border-color:var(--accent); }
+.panel-actions button:disabled { opacity:0.35; cursor:not-allowed; background:var(--bg-2); color:var(--text-dim); }
+.panel-actions button.danger:hover { background:var(--danger); border-color:var(--danger); }
+.panel-actions .sep { width:1px; height:18px; background:var(--border); margin:0 3px; }
 
 /* ---------- Combined Layers+Timeline panel ---------- */
 .lt-layout {
   display:grid;
-  grid-template-columns:220px 1fr 280px;
-  grid-template-rows:28px 1fr;
+  grid-template-columns:220px minmax(0, 1fr) 280px;
+  grid-template-rows:28px minmax(0, 1fr);
   height:100%;
+  min-height:0;
   overflow:hidden;
 }
 .lt-names-header, .lt-props-header {
@@ -107,15 +119,17 @@ foldable-panel { display:block; min-height:32px; }
   overflow-y:scroll; overflow-x:hidden;
   scrollbar-width:none;
   background:var(--bg-2);
+  min-height:0;
 }
 .lt-names::-webkit-scrollbar { display:none; }
 .layers-list { min-height:100%; }
 .lt-tracks-wrap {
   grid-column:2; grid-row:2;
   overflow:hidden; position:relative;
+  min-height:0;
 }
 .rows-wrap {
-  position:absolute; inset:0; overflow:auto;
+  position:absolute; top:0; left:0; right:0; bottom:0; overflow:auto;
 }
 .rows-inner {
   position:relative; min-height:100%;
@@ -130,6 +144,7 @@ foldable-panel { display:block; min-height:32px; }
   padding:10px;
   font-size:12px;
   background:var(--bg-2);
+  min-height:0;
 }
 
 /* Layer items */
@@ -217,7 +232,7 @@ foldable-panel { display:block; min-height:32px; }
   background:var(--playhead); pointer-events:none; z-index:4;
 }
 
-/* ---------- Layer properties (inside lt-props) ---------- */
+/* ---------- Layer properties ---------- */
 .lt-props h3 { font-size:12px; text-transform:uppercase; color:var(--text-dim); margin:0 0 8px; letter-spacing:0.5px; }
 .lt-props h4 { font-size:10px; text-transform:uppercase; color:var(--text-dim); margin:10px 0 4px; letter-spacing:0.5px; }
 .lt-props label { display:flex; align-items:center; gap:6px; margin-bottom:6px; }
@@ -253,7 +268,7 @@ foldable-panel { display:block; min-height:32px; }
   cursor:pointer;
 }
 .kf-badge:hover { background:rgba(255,183,0,0.25); }
-.danger-btn { background:#a33; color:#fff; border:none; border-radius:3px; padding:6px 10px; cursor:pointer; font-size:12px; margin-top:8px; width:100%; }
+.danger-btn { background:var(--danger); color:#fff; border:none; border-radius:3px; padding:6px 10px; cursor:pointer; font-size:12px; margin-top:8px; width:100%; }
 .danger-btn:hover { background:#c44; }
 .danger-btn.secondary { background:var(--accent); }
 .danger-btn.secondary:hover { background:var(--accent-h); }
@@ -267,16 +282,17 @@ foldable-panel { display:block; min-height:32px; }
 
 /* ---------- Keyframes table ---------- */
 .kf-layout {
-  display:flex; height:100%; overflow:hidden;
+  display:flex; height:100%; min-height:0; overflow:hidden;
 }
 .kf-table-wrap {
   flex:1; display:flex; flex-direction:column;
-  min-width:0; overflow:hidden;
+  min-width:0; min-height:0; overflow:hidden;
   background:var(--bg-2);
 }
 .kf-table-head {
   display:grid;
-  grid-template-columns: 80px 160px 130px 1fr 110px;
+  /* Убрали колонку "Слой" */
+  grid-template-columns: 80px 130px 1fr 110px;
   background:var(--bg-3);
   border-bottom:1px solid var(--border);
   font-size:10px; text-transform:uppercase; color:var(--text-dim);
@@ -303,10 +319,11 @@ foldable-panel { display:block; min-height:32px; }
 .kf-table-body {
   flex:1;
   overflow-y:auto;
+  min-height:0;
 }
 .kf-row {
   display:grid;
-  grid-template-columns: 80px 160px 130px 1fr 110px;
+  grid-template-columns: 80px 130px 1fr 110px;
   font-size:12px;
   cursor:pointer;
   border-bottom:1px solid var(--border);
@@ -323,7 +340,6 @@ foldable-panel { display:block; min-height:32px; }
   font-family:'Consolas', monospace;
   font-size:11px;
 }
-.kf-row .kf-layer { font-family:inherit; font-size:12px; }
 .kf-row .kf-frame { text-align:right; }
 .kf-empty {
   padding:20px;
@@ -331,7 +347,6 @@ foldable-panel { display:block; min-height:32px; }
   color:var(--text-dim);
   font-style:italic;
 }
-
 .kf-props-wrap {
   width:300px;
   flex-shrink:0;
@@ -340,6 +355,7 @@ foldable-panel { display:block; min-height:32px; }
   padding:10px;
   font-size:12px;
   background:var(--bg-2);
+  min-height:0;
 }
 .kf-props-wrap h3 {
   font-size:12px; text-transform:uppercase; color:var(--text-dim);
@@ -364,12 +380,6 @@ foldable-panel { display:block; min-height:32px; }
   border:1px solid var(--border); border-radius:4px;
 }
 .easing-editor h4 { margin:0 0 6px; display:flex; align-items:center; }
-.easing-editor h4 .easing-title { flex:1; }
-.easing-close {
-  background:none; border:none; color:var(--text-dim);
-  cursor:pointer; font-size:14px; line-height:1; padding:0 2px;
-}
-.easing-close:hover { color:#fff; }
 .easing-svg-wrap { display:flex; justify-content:center; margin:6px 0; }
 .easing-svg {
   width:200px; height:200px; background:#0f0f0f; border-radius:4px;
@@ -402,6 +412,25 @@ foldable-panel { display:block; min-height:32px; }
   color:var(--text-dim); text-align:center; margin-top:6px; line-height:1.4;
 }
 
+/* ---------- Popup menu ---------- */
+.popup-menu {
+  position:fixed;
+  background:var(--bg-3);
+  border:1px solid var(--border);
+  border-radius:4px;
+  min-width:170px;
+  z-index:2000;
+  box-shadow:0 6px 24px rgba(0,0,0,0.6);
+  padding:4px;
+}
+.popup-menu button {
+  display:block; width:100%; text-align:left; padding:7px 10px;
+  background:transparent; border:none; color:var(--text); border-radius:3px; font-size:12px;
+  cursor:pointer;
+}
+.popup-menu button:hover { background:var(--accent); color:#fff; }
+.popup-menu button:disabled { opacity:0.35; cursor:not-allowed; }
+
 /* JSON panel */
 .json-panel {
   position:fixed; top:0; left:0; right:0; bottom:0;
@@ -415,7 +444,6 @@ foldable-panel { display:block; min-height:32px; }
 .json-error { padding:8px 16px; background:#5a1d1d; color:#fcc; font-family:monospace; font-size:12px; display:none; }
 .json-error.visible { display:block; }
 
-/* Sort indicator */
 .sort-ind { font-size:9px; opacity:0.7; }
 </style>
 </head>
@@ -424,7 +452,7 @@ foldable-panel { display:block; min-height:32px; }
 
 <script>
 // ============================================================
-// FOLDABLE PANEL component
+// FOLDABLE PANEL
 // ============================================================
 class FoldablePanel extends HTMLElement {
   static get observedAttributes(){ return ['collapsed', 'panel-height', 'title']; }
@@ -435,19 +463,23 @@ class FoldablePanel extends HTMLElement {
     this.shadowRoot.innerHTML = `
       <style>
         :host {
-          display: flex;
-          flex-direction: column;
+          display: grid;
+          /* grid вместо flex — надёжнее контейнит контент */
+          grid-template-rows: 32px minmax(0, 1fr);
+          grid-template-areas: "header" "body";
           background: var(--bg-2, #252526);
           border-top: 1px solid var(--border, #3e3e42);
           overflow: hidden;
           min-height: 32px;
         }
+        :host([collapsed]) {
+          grid-template-rows: 32px 0;
+        }
         .header {
-          height: 32px;
-          flex-shrink: 0;
+          grid-area: header;
           display: flex;
           align-items: center;
-          padding: 0 12px;
+          padding: 0 10px 0 12px;
           background: var(--bg-3, #2d2d30);
           border-bottom: 1px solid var(--border, #3e3e42);
           cursor: pointer;
@@ -456,26 +488,44 @@ class FoldablePanel extends HTMLElement {
           text-transform: uppercase;
           letter-spacing: 0.5px;
           gap: 8px;
+          overflow: hidden;
         }
+        :host([collapsed]) .header { border-bottom-color: transparent; }
         .toggle {
           width: 16px; height: 16px;
           display: flex; align-items: center; justify-content: center;
           transition: transform 0.15s;
           color: var(--text, #ccc);
           font-size: 11px;
+          flex-shrink: 0;
         }
         :host([collapsed]) .toggle { transform: rotate(-90deg); }
-        .title { flex: 1; color: var(--text, #ccc); }
-        .body {
-          flex: 1; min-height: 0;
-          display: flex; flex-direction: column;
+        .title {
+          flex: 1;
+          color: var(--text, #ccc);
+          white-space: nowrap;
           overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .actions {
+          flex-shrink: 0;
+          display: flex;
+          align-items: center;
+          cursor: default;
+        }
+        .body {
+          grid-area: body;
+          min-height: 0;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
         }
         :host([collapsed]) .body { display: none; }
       </style>
       <div class="header">
         <span class="toggle">▾</span>
         <span class="title"></span>
+        <span class="actions" id="actions-slot"><slot name="actions"></slot></span>
       </div>
       <div class="body"><slot></slot></div>
     `;
@@ -494,14 +544,23 @@ class FoldablePanel extends HTMLElement {
     }
 
     this._applyHeight();
-    this._header.addEventListener('click', () => this.toggle());
+
+    // Клик по заголовку сворачивает панель,
+    // но только если это не кнопка в слоте actions
+    this._header.addEventListener('click', e => {
+      if (e.target.closest('#actions-slot')) return;
+      if (e.target.closest('button')) return;
+      this.toggle();
+    });
   }
 
   attributeChangedCallback(name, oldVal, newVal){
     if (name === 'title' && this._titleEl){
       this._titleEl.textContent = newVal || 'Панель';
     }
-    if (name === 'panel-height') this._applyHeight();
+    if (name === 'panel-height' || name === 'collapsed'){
+      this._applyHeight();
+    }
   }
 
   _applyHeight(){
@@ -518,7 +577,10 @@ class FoldablePanel extends HTMLElement {
       localStorage.setItem('bonbon:panel:' + id, wasCollapsed ? 'expanded' : 'collapsed');
     }
     this._applyHeight();
-    this.dispatchEvent(new CustomEvent('panel-toggle', { detail: { collapsed: !wasCollapsed } }));
+    this.dispatchEvent(new CustomEvent('panel-toggle', {
+      bubbles: true, composed: true,
+      detail: { collapsed: !wasCollapsed }
+    }));
   }
 }
 customElements.define('foldable-panel', FoldablePanel);
@@ -717,17 +779,19 @@ class LottieEditor extends HTMLElement {
     this._syncingScroll = false;
     this._dragSrcIndex = -1;
 
-    // KEYFRAMES
     this.activeKf = null; // { layerInd, path, t }
     this.kfSortDir = 'asc';
 
-    // HISTORY
     this.history = [];
     this.historyIndex = -1;
     this._inTransaction = false;
     this._transactionLabel = '';
     this._commitTimer = null;
     this._commitLabel = '';
+
+    // для popup-меню
+    this._popupMenu = null;
+    this._popupOutsideHandler = null;
   }
 
   connectedCallback(){
@@ -741,15 +805,6 @@ class LottieEditor extends HTMLElement {
   render(){
     this.innerHTML = `
       <div class="toolbar">
-        <div class="dropdown" data-dropdown="add">
-          <button data-action="add-toggle">+ Слой ▾</button>
-          <div class="dropdown-menu">
-            <button data-action="add-rect">⬛ Прямоугольник</button>
-            <button data-action="add-ellipse">⬤ Эллипс</button>
-            <button data-action="add-text">T Текст</button>
-          </div>
-        </div>
-        <div class="sep"></div>
         <button data-action="play">▶ Play</button>
         <button data-action="stop">⏹ Stop</button>
         <div class="frame-display">Кадр: <span class="cur">0</span> / <span class="tot">90</span></div>
@@ -768,14 +823,22 @@ class LottieEditor extends HTMLElement {
         <div class="sep"></div>
         <button data-action="toggle-view">📝 Code View</button>
         <div style="flex:1"></div>
-        <span style="color:var(--text-dim);font-size:11px;">Bonbon v1.0</span>
+        <span style="color:var(--text-dim);font-size:11px;">Bonbon v1.1</span>
       </div>
 
       <div class="stage">
         <div class="preview-container"><div class="lottie-mount"></div></div>
       </div>
 
-      <foldable-panel panel-id="timeline" title="Слои + Таймлайн + Свойства слоя" panel-height="320px">
+      <foldable-panel panel-id="timeline" id="panel-timeline" title="Слои + Таймлайн + Свойства слоя" panel-height="320px">
+        <div slot="actions" class="panel-actions">
+          <button data-toolbar-action="add-layer" title="Добавить слой">+ Слой ▾</button>
+          <span class="sep"></span>
+          <button data-toolbar-action="move-up" title="Выше">↑</button>
+          <button data-toolbar-action="move-down" title="Ниже">↓</button>
+          <button data-toolbar-action="duplicate-layer" title="Дублировать">⧉</button>
+          <button class="danger" data-toolbar-action="delete-layer" title="Удалить">🗑</button>
+        </div>
         <div class="lt-layout">
           <div class="lt-names-header">Слои</div>
           <div class="lt-ruler-wrap"><div class="ruler"></div></div>
@@ -788,12 +851,18 @@ class LottieEditor extends HTMLElement {
         </div>
       </foldable-panel>
 
-      <foldable-panel panel-id="keyframes" title="Keyframes" panel-height="260px">
+      <foldable-panel panel-id="keyframes" id="panel-keyframes" title="Keyframes" panel-height="260px">
+        <div slot="actions" class="panel-actions">
+          <button data-toolbar-action="add-keyframe" title="Добавить keyframe">◆ + ▾</button>
+          <span class="sep"></span>
+          <button data-toolbar-action="kf-prev" title="Предыдущий">←</button>
+          <button data-toolbar-action="kf-next" title="Следующий">→</button>
+          <button class="danger" data-toolbar-action="kf-delete" title="Удалить keyframe">🗑</button>
+        </div>
         <div class="kf-layout">
           <div class="kf-table-wrap">
             <div class="kf-table-head">
               <button data-sort="frame">Кадр <span class="sort-ind">▲</span></button>
-              <span>Слой</span>
               <span>Свойство</span>
               <span>Значение</span>
               <span>Easing</span>
@@ -835,6 +904,8 @@ class LottieEditor extends HTMLElement {
     this.kfPropsContainer = q('.kf-props-container');
     this.kfSortBtn = q('.kf-table-head [data-sort="frame"]');
     this.kfSortInd = q('.kf-table-head [data-sort="frame"] .sort-ind');
+    this.panelTimeline = q('#panel-timeline');
+    this.panelKeyframes = q('#panel-keyframes');
     this.playheadMarker = null;
     this.playheadLine = null;
   }
@@ -845,16 +916,7 @@ class LottieEditor extends HTMLElement {
       const btn = e.target.closest('button');
       if (!btn) return;
       const a = btn.dataset.action;
-      if (a === 'add-toggle'){
-        this.toggleDropdown(this.toolbar.querySelector('[data-dropdown="add"]'));
-        e.stopPropagation();
-        return;
-      }
-      this.closeAllDropdowns();
-      if (a === 'add-rect') this.addShapeLayer('rc');
-      else if (a === 'add-ellipse') this.addShapeLayer('el');
-      else if (a === 'add-text') this.addTextLayer();
-      else if (a === 'play') this.togglePlay();
+      if (a === 'play') this.togglePlay();
       else if (a === 'stop') this.stop();
       else if (a === 'undo') this.undo();
       else if (a === 'redo') this.redo();
@@ -865,12 +927,36 @@ class LottieEditor extends HTMLElement {
       else if (a === 'export') this.exportJson();
       else if (a === 'toggle-view') this.toggleView();
     });
-    document.addEventListener('click', e => {
-      const dd = this.toolbar.querySelector('[data-dropdown="add"]');
-      if (dd && !dd.contains(e.target)) dd.classList.remove('open');
-    });
 
     this.fileInput.addEventListener('change', e => this.handleImport(e));
+
+    // ---- Toolbar actions в хедерах панелей (делегирование) ----
+    this.addEventListener('click', e => {
+      const btn = e.target.closest('[data-toolbar-action]');
+      if (!btn) return;
+      const a = btn.dataset.toolbarAction;
+      if (a === 'add-layer'){
+        e.stopPropagation();
+        this.showAddLayerMenu(btn);
+      } else if (a === 'move-up'){
+        this.moveSelectedLayer(-1);
+      } else if (a === 'move-down'){
+        this.moveSelectedLayer(1);
+      } else if (a === 'duplicate-layer'){
+        this.duplicateSelectedLayer();
+      } else if (a === 'delete-layer'){
+        this.deleteSelectedLayer();
+      } else if (a === 'add-keyframe'){
+        e.stopPropagation();
+        this.showAddKeyframeMenu(btn);
+      } else if (a === 'kf-prev'){
+        this.navigateActiveKf(-1);
+      } else if (a === 'kf-next'){
+        this.navigateActiveKf(1);
+      } else if (a === 'kf-delete'){
+        this.deleteActiveKeyframe();
+      }
+    });
 
     // Zoom wheel
     this.addEventListener('wheel', e => {
@@ -947,11 +1033,12 @@ class LottieEditor extends HTMLElement {
     this.kfTableBody.addEventListener('click', e => {
       const row = e.target.closest('.kf-row');
       if (!row) return;
-      const layerInd = parseInt(row.dataset.layerInd, 10);
       const path = row.dataset.path;
       const t = parseFloat(row.dataset.t);
-      if (isNaN(layerInd) || isNaN(t)) return;
-      this.selectKeyframe(layerInd, path, t);
+      if (isNaN(t)) return;
+      const layer = this.lottieData.layers[this.selectedLayerIndex];
+      if (!layer) return;
+      this.selectKeyframe(layer.ind, path, t);
     });
 
     this.kfSortBtn.addEventListener('click', () => {
@@ -964,6 +1051,78 @@ class LottieEditor extends HTMLElement {
   }
 
   getLayerSt(layer){ return (layer && layer.st) || 0; }
+
+  // ============================================================
+  // POPUP MENU
+  // ============================================================
+  showPopupMenu(items, anchorEl){
+    this.closePopupMenu();
+    const menu = document.createElement('div');
+    menu.className = 'popup-menu';
+    items.forEach(item => {
+      const btn = document.createElement('button');
+      btn.textContent = item.label;
+      if (item.disabled) btn.disabled = true;
+      btn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        this.closePopupMenu();
+        if (typeof item.action === 'function') item.action();
+      });
+      menu.appendChild(btn);
+    });
+    document.body.appendChild(menu);
+
+    const rect = anchorEl.getBoundingClientRect();
+    menu.style.top = (rect.bottom + 4) + 'px';
+    menu.style.left = rect.left + 'px';
+
+    this._popupMenu = menu;
+
+    const outside = (ev) => {
+      if (!menu.contains(ev.target) && ev.target !== anchorEl && !anchorEl.contains(ev.target)){
+        this.closePopupMenu();
+      }
+    };
+    setTimeout(() => {
+      document.addEventListener('mousedown', outside);
+      this._popupOutsideHandler = outside;
+    }, 0);
+  }
+
+  closePopupMenu(){
+    if (this._popupMenu){
+      this._popupMenu.remove();
+      this._popupMenu = null;
+    }
+    if (this._popupOutsideHandler){
+      document.removeEventListener('mousedown', this._popupOutsideHandler);
+      this._popupOutsideHandler = null;
+    }
+  }
+
+  showAddLayerMenu(anchorEl){
+    this.showPopupMenu([
+      { label: '⬛ Прямоугольник', action: () => this.addShapeLayer('rc') },
+      { label: '⬤ Эллипс', action: () => this.addShapeLayer('el') },
+      { label: 'T Текст', action: () => this.addTextLayer() },
+    ], anchorEl);
+  }
+
+  showAddKeyframeMenu(anchorEl){
+    const i = this.selectedLayerIndex;
+    if (i < 0){
+      this.showPopupMenu([{ label: 'Сначала выберите слой', disabled: true, action: null }], anchorEl);
+      return;
+    }
+    const items = [
+      { label: 'Pos X', action: () => this.toggleKeyframe('ks.p') },
+      { label: 'Pos Y', action: () => this.toggleKeyframe('ks.p') },
+      { label: 'Scale', action: () => this.toggleKeyframe('ks.s') },
+      { label: 'Rotate', action: () => this.toggleKeyframe('ks.r') },
+      { label: 'Opacity', action: () => this.toggleKeyframe('ks.o') },
+    ];
+    this.showPopupMenu(items, anchorEl);
+  }
 
   // ============================================================
   // HISTORY
@@ -1017,7 +1176,6 @@ class LottieEditor extends HTMLElement {
     this.lottieData = JSON.parse(snap.data);
     this.selectedLayerIndex = snap.sel;
     this.currentFrame = snap.frame;
-    // Восстанавливаем activeKf, если ещё валиден
     if (snap.kf){
       const idx = this.lottieData.layers.findIndex(l => l.ind === snap.kf.layerInd);
       if (idx >= 0){
@@ -1034,8 +1192,9 @@ class LottieEditor extends HTMLElement {
       this.activeKf = null;
     }
     this.updatePreview(); this.renderLayers(); this.renderTimeline(); this.renderProps();
-    this.renderKeyframesTable(); this.renderKfProps();
-    this.updatePlayhead(); this.updateFrameDisplay(); this.refreshJsonIfVisible(); this.updateHistoryButtons();
+    this.renderKeyframesTable(); this.renderKfProps(); this.updatePanelTitles();
+    this.updatePlayhead(); this.updateFrameDisplay(); this.refreshJsonIfVisible();
+    this.updateHistoryButtons(); this.updateToolbarButtons();
   }
   updateHistoryButtons(){
     const u = this.toolbar.querySelector('[data-action="undo"]');
@@ -1093,7 +1252,8 @@ class LottieEditor extends HTMLElement {
     this.activeKf = null;
     this.endTransaction();
     this.updatePreview(); this.renderLayers(); this.renderTimeline();
-    this.renderProps(); this.renderKeyframesTable(); this.renderKfProps(); this.refreshJsonIfVisible();
+    this.renderProps(); this.renderKeyframesTable(); this.renderKfProps();
+    this.updatePanelTitles(); this.updateToolbarButtons(); this.refreshJsonIfVisible();
   }
   duplicateSelectedLayer(){
     if (this.selectedLayerIndex < 0) return;
@@ -1108,6 +1268,22 @@ class LottieEditor extends HTMLElement {
     this.endTransaction();
     this.updatePreview(); this.renderLayers(); this.renderTimeline();
     this.renderProps(); this.renderKeyframesTable(); this.refreshJsonIfVisible();
+  }
+  moveSelectedLayer(dir){
+    const i = this.selectedLayerIndex;
+    if (i < 0) return;
+    const n = this.lottieData.layers.length;
+    const target = i + dir;
+    if (target < 0 || target >= n) return;
+    const layer = this.lottieData.layers[i];
+    if (layer?.locked){ alert('Слой заблокирован.'); return; }
+    this.beginTransaction(dir < 0 ? 'Move layer up' : 'Move layer down');
+    const [l] = this.lottieData.layers.splice(i, 1);
+    this.lottieData.layers.splice(target, 0, l);
+    this.selectedLayerIndex = target;
+    this.endTransaction();
+    this.renderLayers(); this.renderTimeline(); this.renderProps();
+    this.renderKeyframesTable(); this.updateToolbarButtons(); this.refreshJsonIfVisible();
   }
   toggleLayerHidden(idx){
     const layer = this.lottieData.layers[idx];
@@ -1125,6 +1301,7 @@ class LottieEditor extends HTMLElement {
     layer.locked = !layer.locked;
     this.endTransaction();
     this.renderLayers(); this.renderTimeline(); this.renderProps();
+    this.updateToolbarButtons();
   }
 
   // ============================================================
@@ -1185,22 +1362,8 @@ class LottieEditor extends HTMLElement {
   }
 
   // ============================================================
-  // DROPDOWN / ZOOM
+  // ZOOM
   // ============================================================
-  toggleDropdown(dd){
-    const wasOpen = dd.classList.contains('open');
-    this.closeAllDropdowns();
-    if (!wasOpen){
-      dd.classList.add('open');
-      const btn = dd.querySelector('button');
-      const menu = dd.querySelector('.dropdown-menu');
-      const r = btn.getBoundingClientRect();
-      menu.style.top = (r.bottom + 4) + 'px';
-      menu.style.left = r.left + 'px';
-    }
-  }
-  closeAllDropdowns(){ this.querySelectorAll('.dropdown.open').forEach(d => d.classList.remove('open')); }
-
   setZoom(z, anchorClientX){
     const old = this.zoom;
     this.zoom = clamp(z, 0.25, 8);
@@ -1233,8 +1396,49 @@ class LottieEditor extends HTMLElement {
     this.renderKfProps();
     this.updatePlayhead();
     this.updateFrameDisplay();
+    this.updatePanelTitles();
+    this.updateToolbarButtons();
     this.refreshJsonIfVisible();
     this.updateHistoryButtons();
+  }
+
+  updatePanelTitles(){
+    if (!this.panelKeyframes) return;
+    const i = this.selectedLayerIndex;
+    if (i >= 0 && this.lottieData.layers[i]){
+      const layer = this.lottieData.layers[i];
+      this.panelKeyframes.setAttribute('title', 'Keyframes · ' + (layer.nm || ('Layer ' + i)));
+    } else {
+      this.panelKeyframes.setAttribute('title', 'Keyframes');
+    }
+  }
+
+  updateToolbarButtons(){
+    const hasLayer = this.selectedLayerIndex >= 0;
+    const layer = hasLayer ? this.lottieData.layers[this.selectedLayerIndex] : null;
+    const n = this.lottieData.layers.length;
+    const idx = this.selectedLayerIndex;
+
+    // Кнопки в хедере панели timeline
+    const btnUp = this.panelTimeline.querySelector('[data-toolbar-action="move-up"]');
+    const btnDown = this.panelTimeline.querySelector('[data-toolbar-action="move-down"]');
+    const btnDup = this.panelTimeline.querySelector('[data-toolbar-action="duplicate-layer"]');
+    const btnDel = this.panelTimeline.querySelector('[data-toolbar-action="delete-layer"]');
+
+    if (btnUp) btnUp.disabled = !hasLayer || idx <= 0 || !!layer?.locked;
+    if (btnDown) btnDown.disabled = !hasLayer || idx >= n - 1 || !!layer?.locked;
+    if (btnDup) btnDup.disabled = !hasLayer || !!layer?.locked;
+    if (btnDel) btnDel.disabled = !hasLayer || !!layer?.locked;
+
+    // Кнопки в хедере панели keyframes
+    const btnKfPrev = this.panelKeyframes.querySelector('[data-toolbar-action="kf-prev"]');
+    const btnKfNext = this.panelKeyframes.querySelector('[data-toolbar-action="kf-next"]');
+    const btnKfDel = this.panelKeyframes.querySelector('[data-toolbar-action="kf-delete"]');
+    const hasKf = !!this.activeKf;
+
+    if (btnKfPrev) btnKfPrev.disabled = !hasKf;
+    if (btnKfNext) btnKfNext.disabled = !hasKf;
+    if (btnKfDel) btnKfDel.disabled = !hasKf;
   }
 
   updatePreview(){
@@ -1296,11 +1500,19 @@ class LottieEditor extends HTMLElement {
       item.addEventListener('click', () => {
         if (item.classList.contains('was-dragged')) return;
         this.selectedLayerIndex = i;
+        // Если activeKf был в другом слое — сбросим
+        if (this.activeKf){
+          const activeLayerIdx = this.lottieData.layers.findIndex(l => l.ind === this.activeKf.layerInd);
+          if (activeLayerIdx !== i) this.activeKf = null;
+        }
         this.renderLayers(); this.renderTimeline(); this.renderProps();
+        this.renderKeyframesTable(); this.renderKfProps();
+        this.updatePanelTitles(); this.updateToolbarButtons();
       });
       this.attachRowDnD(item, i, this.layersList, () => {
         this.updatePreview(); this.renderLayers(); this.renderTimeline();
-        this.renderProps(); this.renderKeyframesTable(); this.refreshJsonIfVisible();
+        this.renderProps(); this.renderKeyframesTable();
+        this.updatePanelTitles(); this.updateToolbarButtons(); this.refreshJsonIfVisible();
       });
       this.layersList.appendChild(item);
     });
@@ -1402,7 +1614,8 @@ class LottieEditor extends HTMLElement {
       row.dataset.index = i;
       this.attachRowDnD(row, i, this.rowsInner, () => {
         this.updatePreview(); this.renderLayers(); this.renderTimeline();
-        this.renderProps(); this.renderKeyframesTable(); this.refreshJsonIfVisible();
+        this.renderProps(); this.renderKeyframesTable();
+        this.updatePanelTitles(); this.updateToolbarButtons(); this.refreshJsonIfVisible();
       });
 
       const isHidden = !!layer.hd;
@@ -1483,21 +1696,20 @@ class LottieEditor extends HTMLElement {
     const layer = this.lottieData.layers[layerIndex];
     if (!layer) return;
 
-    // Найдём первую анимированную property, у которой есть kf на этом кадре
     let chosenPath = null;
     if (this.activeKf && this.activeKf.layerInd === layer.ind && this.activeKf.t === internalFrame){
       chosenPath = this.activeKf.path;
     } else {
-      const found = this.findAnyKeyframePathAt(layer, internalFrame);
-      chosenPath = found;
+      chosenPath = this.findAnyKeyframePathAt(layer, internalFrame);
     }
     if (!chosenPath){
-      // просто перематываем playhead
       this.currentFrame = isNaN(absFrame) ? internalFrame : absFrame;
       this.selectedLayerIndex = layerIndex;
+      this.activeKf = null;
       this.updatePlayhead(); this.updateFrameDisplay();
       this.renderLayers(); this.renderTimeline(); this.renderProps();
-      this.renderKfProps();
+      this.renderKeyframesTable(); this.renderKfProps();
+      this.updatePanelTitles(); this.updateToolbarButtons();
       return;
     }
     this.selectKeyframe(layer.ind, chosenPath, internalFrame);
@@ -1529,6 +1741,7 @@ class LottieEditor extends HTMLElement {
         e.preventDefault(); e.stopPropagation();
         this.selectedLayerIndex = layerIndex;
         this.renderLayers(); this.renderTimeline(); this.renderProps();
+        this.updatePanelTitles(); this.updateToolbarButtons();
         return;
       }
       e.preventDefault(); e.stopPropagation();
@@ -1568,6 +1781,7 @@ class LottieEditor extends HTMLElement {
           this.selectedLayerIndex = layerIndex;
           this.endTransaction();
           this.renderLayers(); this.renderTimeline(); this.renderProps();
+          this.renderKeyframesTable(); this.updatePanelTitles(); this.updateToolbarButtons();
           return;
         }
         const dx = ev.clientX - startX;
@@ -1624,7 +1838,6 @@ class LottieEditor extends HTMLElement {
     l.op = (l.op || 0) + delta;
     this.shiftLayerKeyframes(l, delta);
     if (l.op <= l.ip) l.op = l.ip + 1;
-    // Обновляем activeKf, если он в этом слое
     if (this.activeKf && this.activeKf.layerInd === l.ind){
       this.activeKf.t += delta;
     }
@@ -1702,7 +1915,7 @@ class LottieEditor extends HTMLElement {
   }
 
   // ============================================================
-  // LAYER PROPS (lt-props column)
+  // LAYER PROPS
   // ============================================================
   renderProps(){
     const i = this.selectedLayerIndex;
@@ -1790,7 +2003,6 @@ class LottieEditor extends HTMLElement {
       if (!prop || prop.a !== 1) return false;
       return prop.k.some(kf => kf.t === f);
     };
-    // Бейдж вместо чипов
     const kfBadge = (propPath) => {
       const prop = getPath(layer, propPath);
       if (!prop || prop.a !== 1) return '';
@@ -1808,16 +2020,13 @@ class LottieEditor extends HTMLElement {
       ${kfBadge(propPath)}
     `;
 
+    // ВАЖНО: move-up/move-down/duplicate/delete убраны — они переехали в хедер панели
     this.propsContainer.innerHTML = `
       <h3>Слой ${i}</h3>
       <label>Имя <input type="text" data-prop="nm" value="${escapeHtml(layer.nm||'')}"></label>
       <div class="prop-row"><label>In</label><input type="number" data-prop="ip" value="${layer.ip||0}"></div>
       <div class="prop-row"><label>Out</label><input type="number" data-prop="op" value="${layer.op||0}"></div>
       <div class="prop-row"><label>St</label><input type="number" data-prop="st" value="${layer.st||0}"></div>
-      <div class="prop-row" style="gap:6px;">
-        <button class="danger-btn secondary" style="margin:0; padding:5px 8px; font-size:11px;" data-action="move-up" ${i===0?'disabled':''}>↑ Выше</button>
-        <button class="danger-btn secondary" style="margin:0; padding:5px 8px; font-size:11px;" data-action="move-down" ${i===this.lottieData.layers.length-1?'disabled':''}>↓ Ниже</button>
-      </div>
       <h4>Transform</h4>
       ${btn('ks.p', 'ks.p.0', 'Pos X')}
       ${btn('ks.p', 'ks.p.1', 'Pos Y')}
@@ -1833,13 +2042,11 @@ class LottieEditor extends HTMLElement {
         <label>Содержимое <input type="text" data-prop="text.t" value="${escapeHtml(textValue)}"></label>
         <div class="prop-row"><label>Размер</label><input type="number" data-prop="text.s" value="${textSize}"></div>
         <label>Цвет <input type="color" data-prop="text.fc" value="${textColor}"></label>` : ''}
-      <button class="danger-btn secondary" data-action="duplicate-layer">Дублировать</button>
-      <button class="danger-btn" data-action="delete-layer">Удалить слой</button>
     `;
   }
 
   // ============================================================
-  // KEYFRAMES TABLE
+  // KEYFRAMES TABLE (only current layer)
   // ============================================================
   getPathLabel(path){
     const map = {
@@ -1855,39 +2062,41 @@ class LottieEditor extends HTMLElement {
   }
 
   collectAllKeyframes(){
+    // Только для выбранного слоя
+    const i = this.selectedLayerIndex;
+    if (i < 0 || !this.lottieData.layers[i]) return [];
+    const layer = this.lottieData.layers[i];
+    const st = this.getLayerSt(layer);
     const out = [];
-    this.lottieData.layers.forEach((layer, idx) => {
-      const st = this.getLayerSt(layer);
-      const walk = (obj, path) => {
-        if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return;
-        if (obj.a === 1 && Array.isArray(obj.k)){
-          for (let i = 0; i < obj.k.length; i++){
-            const kf = obj.k[i];
-            if (typeof kf.t !== 'number') continue;
-            out.push({
-              layerIndex: idx,
-              layerInd: layer.ind,
-              layerName: layer.nm || ('Layer ' + idx),
-              path,
-              pathLabel: this.getPathLabel(path),
-              t: kf.t,
-              absFrame: st + kf.t,
-              kfRef: kf,
-              value: kf.s
-            });
-          }
-          return;
+    const walk = (obj, path) => {
+      if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return;
+      if (obj.a === 1 && Array.isArray(obj.k)){
+        for (let idx = 0; idx < obj.k.length; idx++){
+          const kf = obj.k[idx];
+          if (typeof kf.t !== 'number') continue;
+          out.push({
+            layerIndex: i,
+            layerInd: layer.ind,
+            layerName: layer.nm || ('Layer ' + i),
+            path,
+            pathLabel: this.getPathLabel(path),
+            t: kf.t,
+            absFrame: st + kf.t,
+            kfRef: kf,
+            value: kf.s
+          });
         }
-        if (obj.k !== undefined) return;
-        for (const key in obj){
-          if (!Object.prototype.hasOwnProperty.call(obj, key)) continue;
-          if (key === 'k' || key === 'a' || key === 'ix' || key === 'x' || key === 'nm') continue;
-          const v = obj[key];
-          if (v && typeof v === 'object') walk(v, path + '.' + key);
-        }
-      };
-      if (layer.ks) walk(layer.ks, 'ks');
-    });
+        return;
+      }
+      if (obj.k !== undefined) return;
+      for (const key in obj){
+        if (!Object.prototype.hasOwnProperty.call(obj, key)) continue;
+        if (key === 'k' || key === 'a' || key === 'ix' || key === 'x' || key === 'nm') continue;
+        const v = obj[key];
+        if (v && typeof v === 'object') walk(v, path + '.' + key);
+      }
+    };
+    if (layer.ks) walk(layer.ks, 'ks');
     out.sort((a, b) => this.kfSortDir === 'asc'
       ? a.absFrame - b.absFrame
       : b.absFrame - a.absFrame);
@@ -1903,7 +2112,9 @@ class LottieEditor extends HTMLElement {
   renderKeyframesTable(){
     const list = this.collectAllKeyframes();
     if (!list.length){
-      this.kfTableBody.innerHTML = '<div class="kf-empty">Нет keyframes</div>';
+      this.kfTableBody.innerHTML = this.selectedLayerIndex < 0
+        ? '<div class="kf-empty">Выберите слой, чтобы увидеть его keyframes</div>'
+        : '<div class="kf-empty">У слоя нет keyframes</div>';
       return;
     }
     const frag = document.createDocumentFragment();
@@ -1916,16 +2127,14 @@ class LottieEditor extends HTMLElement {
           && this.activeKf.t === kf.t){
         row.classList.add('active');
       }
-      row.dataset.layerInd = kf.layerInd;
       row.dataset.path = kf.path;
       row.dataset.t = kf.t;
 
-      // Easing = outgoing segment (i/o текущего kf)
       const easingTxt = easingName(kf.kfRef);
 
+      // Без колонки "Слой" — она одна для всей таблицы
       row.innerHTML = `
         <span class="kf-frame">${kf.absFrame}</span>
-        <span class="kf-layer" title="${escapeHtml(kf.layerName)}">${escapeHtml(kf.layerName)}</span>
         <span class="kf-prop">${escapeHtml(kf.pathLabel)}</span>
         <span class="kf-value">${this.formatKfValue(kf.value)}</span>
         <span class="kf-easing">${easingTxt}</span>
@@ -1957,8 +2166,9 @@ class LottieEditor extends HTMLElement {
     this.renderProps();
     this.renderKeyframesTable();
     this.renderKfProps();
+    this.updatePanelTitles();
+    this.updateToolbarButtons();
 
-    // Скролл к активной строке
     requestAnimationFrame(() => {
       const row = this.kfTableBody.querySelector('.kf-row.active');
       if (row) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -1989,11 +2199,9 @@ class LottieEditor extends HTMLElement {
     if (prop.k.length > 1){
       prop.k.splice(kfIdx, 1);
     } else {
-      // Последний kf — превращаем свойство в статичное
       prop.a = 0;
       prop.k = prop.k[0].s;
     }
-    // Ищем ближайший kf
     let nextKf = null;
     if (prop.a === 1 && prop.k.length){
       const sorted = [...prop.k].sort((a,b)=>Math.abs(a.t-this.activeKf.t) - Math.abs(b.t-this.activeKf.t));
@@ -2007,7 +2215,22 @@ class LottieEditor extends HTMLElement {
     this.renderProps();
     this.renderKeyframesTable();
     this.renderKfProps();
+    this.updateToolbarButtons();
     this.refreshJsonIfVisible();
+  }
+
+  navigateActiveKf(dir){
+    if (!this.activeKf) return;
+    const idx = this.lottieData.layers.findIndex(l => l.ind === this.activeKf.layerInd);
+    if (idx < 0) return;
+    const layer = this.lottieData.layers[idx];
+    const prop = getPath(layer, this.activeKf.path);
+    if (!prop || prop.a !== 1) return;
+    const sorted = [...prop.k].sort((a,b) => a.t - b.t);
+    const cur = sorted.findIndex(k => k.t === this.activeKf.t);
+    const next = cur + dir;
+    if (next < 0 || next >= sorted.length) return;
+    this.selectKeyframe(this.activeKf.layerInd, this.activeKf.path, sorted[next].t);
   }
 
   // ============================================================
@@ -2049,7 +2272,6 @@ class LottieEditor extends HTMLElement {
       `;
     }
 
-    // Easing
     const prop = getPath(layer, this.activeKf.path);
     const kfIdx = prop.k.findIndex(k => k.t === kf.t);
     const isLast = kfIdx === prop.k.length - 1;
@@ -2061,6 +2283,7 @@ class LottieEditor extends HTMLElement {
       easingHTML = this.buildEasingEditor(this.activeKf.path, kf, p1, p2);
     }
 
+    // Кнопок prev/next/delete тут больше нет — они в хедере панели
     cont.innerHTML = `
       <h3>${pathLabel}</h3>
       <div style="color:var(--text-dim); font-size:11px; margin-bottom:8px;">
@@ -2072,11 +2295,6 @@ class LottieEditor extends HTMLElement {
       </div>
       <h4>Значение</h4>
       ${valueHTML}
-      <div style="display:flex; gap:6px; margin-top:8px;">
-        <button class="danger-btn secondary" style="margin:0; padding:5px 8px; font-size:11px; flex:1;" data-kf-action="prev" title="Предыдущий keyframe">← Пред.</button>
-        <button class="danger-btn secondary" style="margin:0; padding:5px 8px; font-size:11px; flex:1;" data-kf-action="next" title="Следующий keyframe">След. →</button>
-      </div>
-      <button class="danger-btn" data-kf-action="delete">Удалить keyframe</button>
       ${easingHTML}
     `;
   }
@@ -2102,7 +2320,7 @@ class LottieEditor extends HTMLElement {
       `<button data-phys-preset="${name}">${name}</button>`).join('');
     return `
       <div class="easing-editor">
-        <h4><span class="easing-title">Easing</span></h4>
+        <h4><span>Easing</span></h4>
         <div class="easing-svg-wrap">
           <svg class="easing-svg" viewBox="0 0 ${size} ${size}" data-easing-path="${path}" data-easing-frame="${kf.t}">
             ${gridSVG}
@@ -2152,7 +2370,6 @@ class LottieEditor extends HTMLElement {
       this.activeKf.t = newT;
       this.endTransaction();
 
-      // Обновляем всё
       this.currentFrame = this.getLayerSt(layer) + newT;
       if (this.animInstance) try { this.animInstance.goToAndStop(this.currentFrame, true); } catch(_){}
       this.updatePlayhead(); this.updateFrameDisplay();
@@ -2183,40 +2400,13 @@ class LottieEditor extends HTMLElement {
   }
 
   onKfPropClick(e){
-    // Пресеты физики
     const physBtn = e.target.closest('[data-phys-preset]');
-    if (physBtn && this.activeKf){
-      this.applyPhysics(physBtn.dataset.physPreset);
-      return;
-    }
+    if (physBtn && this.activeKf){ this.applyPhysics(physBtn.dataset.physPreset); return; }
     const presetBtn = e.target.closest('[data-preset]');
     if (presetBtn && this.activeKf){
       const vals = EASING_PRESETS[presetBtn.dataset.preset];
       if (vals) this.applyEasingToActive([vals[0], vals[1]], [vals[2], vals[3]]);
       return;
-    }
-
-    const btn = e.target.closest('button');
-    if (!btn) return;
-    const a = btn.dataset.kfAction;
-    if (!a) return;
-
-    if (a === 'delete'){
-      this.deleteActiveKeyframe();
-      return;
-    }
-    if (a === 'prev' || a === 'next'){
-      const kf = this.getActiveKfRef();
-      if (!kf || !this.activeKf) return;
-      const idx = this.lottieData.layers.findIndex(l => l.ind === this.activeKf.layerInd);
-      const layer = this.lottieData.layers[idx];
-      const prop = getPath(layer, this.activeKf.path);
-      if (!prop || prop.a !== 1) return;
-      const sorted = [...prop.k].sort((a,b) => a.t - b.t);
-      const curIdx = sorted.findIndex(k => k.t === kf.t);
-      const nextIdx = a === 'prev' ? curIdx - 1 : curIdx + 1;
-      if (nextIdx < 0 || nextIdx >= sorted.length) return;
-      this.selectKeyframe(this.activeKf.layerInd, this.activeKf.path, sorted[nextIdx].t);
     }
   }
 
@@ -2254,7 +2444,8 @@ class LottieEditor extends HTMLElement {
 
     this.activeKf = null;
     this.updatePreview(); this.renderTimeline(); this.renderProps();
-    this.renderKeyframesTable(); this.renderKfProps(); this.refreshJsonIfVisible();
+    this.renderKeyframesTable(); this.renderKfProps(); this.updateToolbarButtons();
+    this.refreshJsonIfVisible();
   }
 
   generatePhysicsKF(startF, endF, startVal, endVal, easeFn, steps){
@@ -2371,7 +2562,8 @@ class LottieEditor extends HTMLElement {
 
     if (prop === 'nm'){
       layer.nm = el.value;
-      this.renderLayers(); this.renderTimeline(); this.renderKeyframesTable(); this.refreshJsonIfVisible();
+      this.renderLayers(); this.renderTimeline(); this.renderKeyframesTable();
+      this.updatePanelTitles(); this.refreshJsonIfVisible();
       this.scheduleCommit('Rename layer');
       return;
     }
@@ -2466,11 +2658,7 @@ class LottieEditor extends HTMLElement {
     }
   }
 
-  // ============================================================
-  // LAYER PROPS CLICK
-  // ============================================================
   onPropClick(e){
-    // Бейдж "N kf" — открывает первый keyframe этого свойства
     const badge = e.target.closest('.kf-badge');
     if (badge){
       const path = badge.dataset.kfPath;
@@ -2493,37 +2681,10 @@ class LottieEditor extends HTMLElement {
       delete this.lottieData.layers[i].locked;
       this.endTransaction();
       this.renderLayers(); this.renderTimeline(); this.renderProps();
+      this.updateToolbarButtons();
       return;
     }
     if (btn.dataset.kf){ this.toggleKeyframe(btn.dataset.kf); return; }
-    const a = btn.dataset.action;
-    if (a === 'delete-layer'){ this.deleteSelectedLayer(); return; }
-    if (a === 'duplicate-layer'){ this.duplicateSelectedLayer(); return; }
-    if (a === 'move-up'){
-      const i = this.selectedLayerIndex;
-      if (i <= 0) return;
-      this.beginTransaction('Move layer up');
-      const [l] = this.lottieData.layers.splice(i, 1);
-      this.lottieData.layers.splice(i-1, 0, l);
-      this.selectedLayerIndex = i-1;
-      this.endTransaction();
-      this.renderLayers(); this.renderTimeline(); this.renderProps();
-      this.renderKeyframesTable(); this.refreshJsonIfVisible();
-      return;
-    }
-    if (a === 'move-down'){
-      const i = this.selectedLayerIndex;
-      const n = this.lottieData.layers.length;
-      if (i < 0 || i >= n-1) return;
-      this.beginTransaction('Move layer down');
-      const [l] = this.lottieData.layers.splice(i, 1);
-      this.lottieData.layers.splice(i+1, 0, l);
-      this.selectedLayerIndex = i+1;
-      this.endTransaction();
-      this.renderLayers(); this.renderTimeline(); this.renderProps();
-      this.renderKeyframesTable(); this.refreshJsonIfVisible();
-      return;
-    }
   }
 
   // ============================================================
@@ -2572,7 +2733,8 @@ class LottieEditor extends HTMLElement {
     }
     this.endTransaction();
     this.updatePreview(); this.renderTimeline(); this.renderProps();
-    this.renderKeyframesTable(); this.renderKfProps(); this.refreshJsonIfVisible();
+    this.renderKeyframesTable(); this.renderKfProps();
+    this.updateToolbarButtons(); this.refreshJsonIfVisible();
   }
 
   // ============================================================
@@ -2589,7 +2751,8 @@ class LottieEditor extends HTMLElement {
     this.activeKf = null;
     this.endTransaction();
     this.updatePreview(); this.renderLayers(); this.renderTimeline();
-    this.renderProps(); this.renderKeyframesTable(); this.renderKfProps(); this.refreshJsonIfVisible();
+    this.renderProps(); this.renderKeyframesTable(); this.renderKfProps();
+    this.updatePanelTitles(); this.updateToolbarButtons(); this.refreshJsonIfVisible();
   }
   addTextLayer(){
     const op = this.lottieData.op || 90;
@@ -2604,7 +2767,8 @@ class LottieEditor extends HTMLElement {
     this.activeKf = null;
     this.endTransaction();
     this.updatePreview(); this.renderLayers(); this.renderTimeline();
-    this.renderProps(); this.renderKeyframesTable(); this.renderKfProps(); this.refreshJsonIfVisible();
+    this.renderProps(); this.renderKeyframesTable(); this.renderKfProps();
+    this.updatePanelTitles(); this.updateToolbarButtons(); this.refreshJsonIfVisible();
   }
 
   // ============================================================
@@ -2642,6 +2806,7 @@ class LottieEditor extends HTMLElement {
       this.endTransaction();
       this.updatePreview(); this.renderLayers(); this.renderTimeline();
       this.renderProps(); this.renderKeyframesTable(); this.renderKfProps();
+      this.updatePanelTitles(); this.updateToolbarButtons();
     } catch(err){
       this.jsonError.textContent = '⚠ ' + err.message;
       this.jsonError.classList.add('visible');
@@ -2663,7 +2828,8 @@ class LottieEditor extends HTMLElement {
         this.totEl.textContent = p.op;
         this.endTransaction();
         this.updatePreview(); this.renderLayers(); this.renderTimeline();
-        this.renderProps(); this.renderKeyframesTable(); this.renderKfProps(); this.refreshJsonIfVisible();
+        this.renderProps(); this.renderKeyframesTable(); this.renderKfProps();
+        this.updatePanelTitles(); this.updateToolbarButtons(); this.refreshJsonIfVisible();
       } catch(err){ alert('Ошибка: ' + err.message); }
     };
     r.readAsText(file);
