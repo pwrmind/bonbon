@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🍭 Bonbon | Lottie Editor v0.6</title>
+<title>🍭 Bonbon | Lottie Editor v0.7</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
 <style>
 :root {
@@ -71,7 +71,7 @@ lottie-editor { display:block; height:100vh; }
 }
 .layers-list { flex:1; overflow-y:auto; overflow-x:hidden; }
 .layer-item {
-  display:flex; align-items:center; gap:8px; height:36px; padding:0 12px;
+  display:flex; align-items:center; gap:6px; height:36px; padding:0 8px 0 12px;
   border-bottom:1px solid var(--border); cursor:grab; user-select:none;
   position:relative;
 }
@@ -81,13 +81,24 @@ lottie-editor { display:block; height:100vh; }
 .layer-item.drop-above { box-shadow: inset 0 3px 0 var(--accent); }
 .layer-item.drop-below { box-shadow: inset 0 -3px 0 var(--accent); }
 .layer-item .icon { font-size:13px; width:16px; text-align:center; flex-shrink:0; }
-.layer-item .name { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.layer-item .idx { font-family:'Consolas',monospace; font-size:10px; opacity:0.5; }
+.layer-item .name { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+.layer-item .idx { font-family:'Consolas',monospace; font-size:10px; opacity:0.5; flex-shrink:0; }
 .layer-item .drag-grip {
   color:var(--text-dim); font-size:11px; letter-spacing:-1px;
-  opacity:0.4; cursor:grab;
+  opacity:0.4; cursor:grab; flex-shrink:0;
 }
 .layer-item:hover .drag-grip { opacity:0.9; }
+.layer-item .toggle-btn {
+  width:20px; height:20px; padding:0; background:transparent; border:none;
+  color:var(--text-dim); cursor:pointer; font-size:12px;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:3px; flex-shrink:0; line-height:1;
+}
+.layer-item .toggle-btn:hover { background:rgba(255,255,255,0.12); color:var(--text); }
+.layer-item.hidden .name { opacity:0.55; text-decoration:line-through; }
+.layer-item.hidden .icon { opacity:0.5; }
+.layer-item.locked .name { font-style:italic; opacity:0.75; }
+.layer-item.locked .toggle-btn.lock-toggle { color:var(--kf); }
 
 .stage { background:#1a1a1a; display:flex; align-items:center; justify-content:center; overflow:auto; }
 .preview-container { background:#111; box-shadow:0 4px 20px rgba(0,0,0,0.5); border-radius:4px; overflow:hidden; flex-shrink:0; }
@@ -135,6 +146,18 @@ lottie-editor { display:block; height:100vh; }
 .danger-btn.secondary:hover { background:var(--accent-h); }
 .danger-btn:disabled { opacity:0.4; cursor:not-allowed; }
 .empty-note { color:var(--text-dim); font-style:italic; font-size:12px; }
+
+.locked-note {
+  background:#3a2d0e;
+  border:1px solid #5a4a1a;
+  border-radius:4px;
+  padding:10px;
+  font-size:12px;
+  color:#f0c674;
+  margin-bottom:8px;
+  line-height:1.5;
+}
+.locked-note .danger-btn { margin-top:8px; }
 
 .easing-editor {
   margin-top:10px; padding:10px; background:#1a1a1a;
@@ -255,6 +278,9 @@ lottie-editor { display:block; height:100vh; }
 }
 .time-bar:hover { background:linear-gradient(180deg,var(--bar-h),#4085c7); }
 .time-bar.selected { outline:2px solid var(--kf); }
+.time-bar.hidden-layer { opacity:0.4; }
+.time-bar.locked { opacity:0.55; cursor:not-allowed; }
+.time-bar.locked .handle { cursor:not-allowed; }
 .bar-label {
   flex:1; display:flex; align-items:center; justify-content:center;
   pointer-events:none; white-space:nowrap; overflow:hidden;
@@ -482,7 +508,6 @@ class LottieEditor extends HTMLElement {
     this.activeEasing = null;
     this._dragSrcIndex = -1;
 
-    // История
     this.history = [];
     this.historyIndex = -1;
     this._inTransaction = false;
@@ -524,11 +549,11 @@ class LottieEditor extends HTMLElement {
           <div class="sep"></div>
           <button data-action="toggle-view">📝 Code View</button>
           <div style="flex:1"></div>
-          <span style="color:var(--text-dim);font-size:11px;">Bonbon v0.6</span>
+          <span style="color:var(--text-dim);font-size:11px;">Bonbon v0.7</span>
         </div>
 
         <div class="sidebar-left">
-          <div class="sidebar-header">Слои (перетаскивай для порядка)</div>
+          <div class="sidebar-header">Слои</div>
           <div class="layers-list"></div>
         </div>
 
@@ -695,7 +720,6 @@ class LottieEditor extends HTMLElement {
       if (h) this.startEasingDrag(h, e);
     });
 
-    // Горячие клавиши
     document.addEventListener('keydown', e => this.onKeyDown(e));
   }
 
@@ -711,14 +735,6 @@ class LottieEditor extends HTMLElement {
     this.updateHistoryButtons();
   }
 
-  snapshot(){
-    return {
-      data: JSON.stringify(this.lottieData),
-      sel: this.selectedLayerIndex,
-      frame: this.currentFrame
-    };
-  }
-
   beginTransaction(label = ''){
     if (this._inTransaction) return;
     this._inTransaction = true;
@@ -730,10 +746,7 @@ class LottieEditor extends HTMLElement {
     this._inTransaction = false;
     const current = JSON.stringify(this.lottieData);
     const last = this.history[this.historyIndex];
-    if (last && last.data === current){
-      // ничего не изменилось
-      return;
-    }
+    if (last && last.data === current) return;
     this.history = this.history.slice(0, this.historyIndex + 1);
     this.history.push({
       data: current,
@@ -741,9 +754,7 @@ class LottieEditor extends HTMLElement {
       frame: this.currentFrame,
       label: this._transactionLabel
     });
-    if (this.history.length > 100){
-      this.history.shift();
-    }
+    if (this.history.length > 100) this.history.shift();
     this.historyIndex = this.history.length - 1;
     this.updateHistoryButtons();
   }
@@ -802,13 +813,11 @@ class LottieEditor extends HTMLElement {
     if (r) r.disabled = this.historyIndex >= this.history.length - 1;
   }
 
-  // ========== Горячие клавиши ==========
   onKeyDown(e){
     const tag = document.activeElement?.tagName;
     const inField = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
                     || document.activeElement?.isContentEditable;
 
-    // Ctrl / Cmd шорткаты
     if (e.ctrlKey || e.metaKey){
       const k = e.key.toLowerCase();
       if (k === 'z' && !e.shiftKey){ e.preventDefault(); this.undo(); return; }
@@ -819,7 +828,6 @@ class LottieEditor extends HTMLElement {
       return;
     }
 
-    // Остальные — только когда не в поле
     if (inField) return;
 
     if (e.code === 'Space'){
@@ -827,31 +835,12 @@ class LottieEditor extends HTMLElement {
       this.togglePlay();
       return;
     }
-    if (e.key === 'ArrowLeft'){
-      e.preventDefault();
-      this.seekRelative(e.shiftKey ? -10 : -1);
-      return;
-    }
-    if (e.key === 'ArrowRight'){
-      e.preventDefault();
-      this.seekRelative(e.shiftKey ? 10 : 1);
-      return;
-    }
-    if (e.key === 'Home'){
-      e.preventDefault();
-      this.seekTo(0);
-      return;
-    }
-    if (e.key === 'End'){
-      e.preventDefault();
-      this.seekTo(this.lottieData.op);
-      return;
-    }
+    if (e.key === 'ArrowLeft'){ e.preventDefault(); this.seekRelative(e.shiftKey ? -10 : -1); return; }
+    if (e.key === 'ArrowRight'){ e.preventDefault(); this.seekRelative(e.shiftKey ? 10 : 1); return; }
+    if (e.key === 'Home'){ e.preventDefault(); this.seekTo(0); return; }
+    if (e.key === 'End'){ e.preventDefault(); this.seekTo(this.lottieData.op); return; }
     if (e.key === 'Delete' || e.key === 'Backspace'){
-      if (this.selectedLayerIndex >= 0){
-        e.preventDefault();
-        this.deleteSelectedLayer();
-      }
+      if (this.selectedLayerIndex >= 0){ e.preventDefault(); this.deleteSelectedLayer(); }
       return;
     }
   }
@@ -863,12 +852,12 @@ class LottieEditor extends HTMLElement {
     this.updateFrameDisplay();
     this.renderProps();
   }
-  seekRelative(delta){
-    this.seekTo(this.currentFrame + delta);
-  }
+  seekRelative(delta){ this.seekTo(this.currentFrame + delta); }
 
   deleteSelectedLayer(){
     if (this.selectedLayerIndex < 0) return;
+    const layer = this.lottieData.layers[this.selectedLayerIndex];
+    if (layer?.locked){ alert('Слой заблокирован.'); return; }
     if (!confirm('Удалить слой?')) return;
     this.beginTransaction('Delete layer');
     this.lottieData.layers.splice(this.selectedLayerIndex, 1);
@@ -881,14 +870,97 @@ class LottieEditor extends HTMLElement {
 
   duplicateSelectedLayer(){
     if (this.selectedLayerIndex < 0) return;
-    const copy = deepClone(this.lottieData.layers[this.selectedLayerIndex]);
+    const src = this.lottieData.layers[this.selectedLayerIndex];
+    if (src?.locked){ alert('Слой заблокирован.'); return; }
+    const copy = deepClone(src);
     copy.ind = nextLayerInd(this.lottieData);
     copy.nm = (copy.nm || 'Layer') + ' copy';
+    delete copy.locked;
     this.beginTransaction('Duplicate layer');
     this.lottieData.layers.splice(this.selectedLayerIndex, 0, copy);
     this.endTransaction();
     this.updatePreview(); this.renderLayers(); this.renderTimeline();
     this.renderProps(); this.refreshJsonIfVisible();
+  }
+
+  // ========== Toggle layer flags ==========
+  toggleLayerHidden(idx){
+    const layer = this.lottieData.layers[idx];
+    if (!layer) return;
+    this.beginTransaction('Toggle visibility');
+    layer.hd = !layer.hd;
+    this.endTransaction();
+    this.updatePreview();
+    this.renderLayers();
+    this.renderTimeline();
+    this.renderProps();
+    this.refreshJsonIfVisible();
+  }
+
+  toggleLayerLocked(idx){
+    const layer = this.lottieData.layers[idx];
+    if (!layer) return;
+    this.beginTransaction('Toggle lock');
+    layer.locked = !layer.locked;
+    this.endTransaction();
+    this.renderLayers();
+    this.renderTimeline();
+    this.renderProps();
+  }
+
+  // ========== Shape helpers ==========
+  findFirstShape(layer){
+    if (!layer.shapes) return null;
+    const walk = (nodes) => {
+      if (!Array.isArray(nodes)) return null;
+      for (const n of nodes){
+        if (!n || typeof n !== 'object') continue;
+        if (n.ty === 'rc' || n.ty === 'el' || n.ty === 'sr' || n.ty === 'sh') return n;
+        if (Array.isArray(n.it)){
+          const r = walk(n.it);
+          if (r) return r;
+        }
+      }
+      return null;
+    };
+    return walk(layer.shapes);
+  }
+
+  getShapeSize(shape){
+    if (!shape || !shape.s) return [0, 0];
+    let k = shape.s.k;
+    if (shape.s.a === 1 && Array.isArray(k)){
+      k = k[0]?.s ?? [0, 0];
+    }
+    if (Array.isArray(k)) return [k[0] ?? 0, k[1] ?? 0];
+    return [k, k];
+  }
+
+  setShapeSize(shape, w, h){
+    if (!shape || !shape.s) return;
+    if (shape.s.a === 1 && Array.isArray(shape.s.k)){
+      if (shape.s.k[0]?.s) shape.s.k[0].s = [w, h];
+      else if (shape.s.k[0]) shape.s.k[0] = { t: shape.s.k[0].t, s: [w, h] };
+    } else {
+      shape.s.k = [w, h];
+    }
+  }
+
+  getRectRadius(shape){
+    if (!shape || shape.ty !== 'rc' || !shape.r) return 0;
+    let k = shape.r.k;
+    if (shape.r.a === 1 && Array.isArray(k)) k = k[0]?.s ?? 0;
+    return typeof k === 'number' ? k : 0;
+  }
+
+  setRectRadius(shape, r){
+    if (!shape || shape.ty !== 'rc') return;
+    if (!shape.r) shape.r = { a:0, k: r };
+    if (shape.r.a === 1 && Array.isArray(shape.r.k)){
+      if (shape.r.k[0]) shape.r.k[0].s = r;
+    } else {
+      shape.r.k = r;
+    }
   }
 
   // ========== Dropdown / zoom ==========
@@ -972,8 +1044,13 @@ class LottieEditor extends HTMLElement {
   renderLayers(){
     this.layersList.innerHTML = '';
     this.lottieData.layers.forEach((layer, i) => {
+      const isHidden = !!layer.hd;
+      const isLocked = !!layer.locked;
       const item = document.createElement('div');
-      item.className = 'layer-item' + (i === this.selectedLayerIndex ? ' selected' : '');
+      item.className = 'layer-item'
+        + (i === this.selectedLayerIndex ? ' selected' : '')
+        + (isHidden ? ' hidden' : '')
+        + (isLocked ? ' locked' : '');
       item.draggable = true;
       item.dataset.index = i;
       let icon = '◦';
@@ -985,8 +1062,23 @@ class LottieEditor extends HTMLElement {
       item.innerHTML = `
         <span class="drag-grip" title="Перетащи для изменения порядка">⋮⋮</span>
         <span class="icon">${icon}</span>
-        <span class="name">${escapeHtml(layer.nm || 'Layer ' + i)}</span>
-        <span class="idx">#${i}</span>`;
+        <span class="name" title="#${i}">${escapeHtml(layer.nm || 'Layer ' + i)}</span>
+        <button class="toggle-btn hide-toggle" title="${isHidden ? 'Показать' : 'Скрыть'}" draggable="false">${isHidden ? '◌' : '◉'}</button>
+        <button class="toggle-btn lock-toggle" title="${isLocked ? 'Разблокировать' : 'Заблокировать'}" draggable="false">${isLocked ? '🔒' : '🔓'}</button>
+      `;
+
+      const hideBtn = item.querySelector('.hide-toggle');
+      const lockBtn = item.querySelector('.lock-toggle');
+      hideBtn.addEventListener('pointerdown', ev => ev.stopPropagation());
+      lockBtn.addEventListener('pointerdown', ev => ev.stopPropagation());
+      hideBtn.addEventListener('click', ev => {
+        ev.stopPropagation();
+        this.toggleLayerHidden(i);
+      });
+      lockBtn.addEventListener('click', ev => {
+        ev.stopPropagation();
+        this.toggleLayerLocked(i);
+      });
 
       item.addEventListener('click', () => {
         if (item.classList.contains('was-dragged')) return;
@@ -1127,8 +1219,14 @@ class LottieEditor extends HTMLElement {
         this.refreshJsonIfVisible();
       });
 
+      const isHidden = !!layer.hd;
+      const isLocked = !!layer.locked;
+
       const bar = document.createElement('div');
-      bar.className = 'time-bar' + (i === this.selectedLayerIndex ? ' selected' : '');
+      bar.className = 'time-bar'
+        + (i === this.selectedLayerIndex ? ' selected' : '')
+        + (isHidden ? ' hidden-layer' : '')
+        + (isLocked ? ' locked' : '');
       bar.draggable = false;
 
       const ip = layer.ip || 0;
@@ -1159,9 +1257,7 @@ class LottieEditor extends HTMLElement {
           ? `Keyframe @ ${f}: ${paths.join(', ')}\nКлик — открыть Easing`
           : `Keyframe @ ${f}`;
 
-        marker.addEventListener('pointerdown', ev => {
-          ev.stopPropagation();
-        });
+        marker.addEventListener('pointerdown', ev => ev.stopPropagation());
         marker.addEventListener('click', ev => {
           ev.stopPropagation();
           this.openKeyframeFromMarker(marker);
@@ -1254,6 +1350,17 @@ class LottieEditor extends HTMLElement {
 
   attachBarDrag(bar, row, layerIndex){
     bar.addEventListener('pointerdown', e => {
+      const layer = this.lottieData.layers[layerIndex];
+      if (layer?.locked){
+        // Просто выделяем, без drag
+        e.preventDefault();
+        e.stopPropagation();
+        this.selectedLayerIndex = layerIndex;
+        if (this.activeEasing) this.activeEasing = null;
+        this.renderLayers(); this.renderTimeline(); this.renderProps();
+        return;
+      }
+
       e.preventDefault();
       e.stopPropagation();
       row.draggable = false;
@@ -1261,7 +1368,6 @@ class LottieEditor extends HTMLElement {
       const mode = e.target.classList.contains('handle-left') ? 'left'
                  : e.target.classList.contains('handle-right') ? 'right'
                  : 'move';
-      const layer = this.lottieData.layers[layerIndex];
       const startX = e.clientX;
       const startIp = layer.ip || 0;
       const startOp = layer.op || 0;
@@ -1418,6 +1524,19 @@ class LottieEditor extends HTMLElement {
     const layer = this.lottieData.layers[i];
     const f = Math.round(this.currentFrame);
 
+    // Заблокированный слой — показываем плашку
+    if (layer.locked){
+      this.propsContainer.innerHTML = `
+        <h3>Слой ${i}</h3>
+        <div class="locked-note">
+          🔒 Слой заблокирован.<br>
+          Редактирование недоступно.
+          <button class="danger-btn secondary" data-action="unlock-layer">🔓 Разблокировать</button>
+        </div>
+      `;
+      return;
+    }
+
     const getK = (path) => {
       const parts = path.split('.');
       const lastPart = parts[parts.length - 1];
@@ -1433,9 +1552,7 @@ class LottieEditor extends HTMLElement {
       } else {
         val = propObj;
       }
-      if (isIndex && Array.isArray(val)){
-        return val[parseInt(lastPart, 10)] ?? 0;
-      }
+      if (isIndex && Array.isArray(val)) return val[parseInt(lastPart, 10)] ?? 0;
       return val;
     };
 
@@ -1461,6 +1578,27 @@ class LottieEditor extends HTMLElement {
         textColor = '#' + t2(fc[0]).toString(16).padStart(2,'0')
                        + t2(fc[1]).toString(16).padStart(2,'0')
                        + t2(fc[2]).toString(16).padStart(2,'0');
+      }
+    }
+
+    // Фигура
+    let shapeHTML = '';
+    if (layer.ty === 4){
+      const shape = this.findFirstShape(layer);
+      if (shape && (shape.ty === 'rc' || shape.ty === 'el')){
+        const [sw, sh] = this.getShapeSize(shape);
+        const label = shape.ty === 'rc' ? 'Прямоугольник' : 'Эллипс';
+        let radiusRow = '';
+        if (shape.ty === 'rc'){
+          const r = this.getRectRadius(shape);
+          radiusRow = `<div class="prop-row"><label>Радиус</label><input type="number" data-prop="shape.r" value="${Math.round(r)}" min="0"></div>`;
+        }
+        shapeHTML = `
+          <h4>Фигура (${label})</h4>
+          <div class="prop-row"><label>Ширина</label><input type="number" data-prop="shape.w" value="${Math.round(sw)}" min="1"></div>
+          <div class="prop-row"><label>Высота</label><input type="number" data-prop="shape.h" value="${Math.round(sh)}" min="1"></div>
+          ${radiusRow}
+        `;
       }
     }
 
@@ -1537,6 +1675,8 @@ class LottieEditor extends HTMLElement {
       ${btn('ks.s', 'ks.s.0', 'Scale')}
       ${btn('ks.r', 'ks.r',   'Rotate')}
       ${btn('ks.o', 'ks.o',   'Opacity')}
+
+      ${shapeHTML}
 
       ${easingHTML}
 
@@ -1723,6 +1863,7 @@ class LottieEditor extends HTMLElement {
     const i = this.selectedLayerIndex;
     if (i < 0) return;
     const layer = this.lottieData.layers[i];
+    if (layer.locked) return;
     const prop = el.dataset.prop;
 
     if (prop === 'nm'){
@@ -1739,6 +1880,23 @@ class LottieEditor extends HTMLElement {
       layer[prop] = v;
       this.updatePreview(); this.renderTimeline(); this.refreshJsonIfVisible();
       this.scheduleCommit('Change timing');
+      return;
+    }
+    if (prop.startsWith('shape.')){
+      const shape = this.findFirstShape(layer);
+      if (!shape) return;
+      const v = parseFloat(el.value);
+      if (isNaN(v)) return;
+      if (prop === 'shape.w' || prop === 'shape.h'){
+        const [w, h] = this.getShapeSize(shape);
+        if (prop === 'shape.w') this.setShapeSize(shape, Math.max(1, v), h);
+        else this.setShapeSize(shape, w, Math.max(1, v));
+      } else if (prop === 'shape.r' && shape.ty === 'rc'){
+        this.setRectRadius(shape, Math.max(0, v));
+      }
+      this.updatePreview();
+      this.refreshJsonIfVisible();
+      this.scheduleCommit('Change shape');
       return;
     }
     if (prop.startsWith('ks.')){
@@ -1845,17 +2003,22 @@ class LottieEditor extends HTMLElement {
       this.renderTimeline();
       return;
     }
+
+    if (btn.dataset.action === 'unlock-layer'){
+      const i = this.selectedLayerIndex;
+      if (i < 0) return;
+      this.beginTransaction('Unlock layer');
+      delete this.lottieData.layers[i].locked;
+      this.endTransaction();
+      this.renderLayers(); this.renderTimeline(); this.renderProps();
+      return;
+    }
+
     if (btn.dataset.kf){ this.toggleKeyframe(btn.dataset.kf); return; }
 
     const a = btn.dataset.action;
-    if (a === 'delete-layer'){
-      this.deleteSelectedLayer();
-      return;
-    }
-    if (a === 'duplicate-layer'){
-      this.duplicateSelectedLayer();
-      return;
-    }
+    if (a === 'delete-layer'){ this.deleteSelectedLayer(); return; }
+    if (a === 'duplicate-layer'){ this.duplicateSelectedLayer(); return; }
     if (a === 'move-up'){
       const i = this.selectedLayerIndex;
       if (i <= 0) return;
@@ -1884,7 +2047,7 @@ class LottieEditor extends HTMLElement {
   applyEasingToActive(p1, p2){
     if (!this.activeEasing) return;
     const layer = this.lottieData.layers[this.selectedLayerIndex];
-    if (!layer) return;
+    if (!layer || layer.locked) return;
     const prop = getPath(layer, this.activeEasing.path);
     if (!prop || prop.a !== 1) return;
     const kf = prop.k.find(k => k.t === this.activeEasing.frame);
@@ -1899,7 +2062,7 @@ class LottieEditor extends HTMLElement {
     const fn = PHYSICS_EASINGS[key];
     if (!fn || !this.activeEasing) return;
     const layer = this.lottieData.layers[this.selectedLayerIndex];
-    if (!layer) return;
+    if (!layer || layer.locked) return;
     const prop = getPath(layer, this.activeEasing.path);
     if (!prop || prop.a !== 1) return;
     const idx = prop.k.findIndex(k => k.t === this.activeEasing.frame);
@@ -1951,6 +2114,7 @@ class LottieEditor extends HTMLElement {
     const i = this.selectedLayerIndex;
     if (i < 0) return;
     const layer = this.lottieData.layers[i];
+    if (layer.locked) return;
     const p = getPath(layer, path);
     if (!p) return;
     const f = Math.round(this.currentFrame);
