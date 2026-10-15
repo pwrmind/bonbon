@@ -266,8 +266,9 @@ lottie-editor { display:block; height:100vh; }
 .kf-marker {
   position:absolute; width:9px; height:9px; background:var(--kf);
   transform:translate(-50%,0) rotate(45deg); top:5px;
-  pointer-events:none; z-index:5;
+  pointer-events:auto; cursor:pointer; z-index:5; touch-action:none;
 }
+.kf-marker.active { background:#fff; box-shadow:0 0 6px var(--kf); }
 .playhead-marker { position:absolute; top:0; height:100%; width:0; pointer-events:none; z-index:6; }
 .playhead-marker .head {
   position:absolute; top:0; left:-8px; width:16px; height:14px;
@@ -942,8 +943,15 @@ class LottieEditor extends HTMLElement {
       kfFrames.forEach(f => {
         if (f < ip || f > op) return;
         const marker = document.createElement('div');
-        marker.className = 'kf-marker';
+        marker.className = 'kf-marker'
+          + ((this.activeEasing?.frame === f && this.selectedLayerIndex === i) ? ' active' : '');
         marker.style.left = ((f - ip) * this.pxPerFrame) + 'px';
+        const paths = this.collectKeyframePaths(layer, f);
+        marker.dataset.frame = f;
+        marker.dataset.kfPaths = JSON.stringify(paths);
+        marker.title = paths.length
+          ? `Keyframe @ ${f}: ${paths.join(', ')}\nКлик — открыть Easing`
+          : `Keyframe @ ${f}`;
         bar.appendChild(marker);
       });
 
@@ -971,6 +979,69 @@ class LottieEditor extends HTMLElement {
     };
     walk(layer.ks);
     return [...frames].sort((a,b)=>a-b);
+  }
+
+  // Пуproperties (в пределах ks), у которых есть keyframe на кадре frame
+  collectKeyframePaths(layer, frame, prefix = 'ks'){
+    const out = [];
+    const walk = (obj, path) => {
+      if (!obj || typeof obj !== 'object') return;
+      if (obj.a === 1 && Array.isArray(obj.k)){
+        if (obj.k.some(kf => kf.t === frame)) out.push(path);
+        return;
+      }
+      if (obj.ix !== undefined || obj.k !== undefined) return; // обычное свойство без анимации
+      for (const key in obj){
+        if (key.startsWith('it') || key === 'shapes') continue; // не углубляемся в группы шейпов
+        const v = obj[key];
+        if (v && typeof v === 'object' && !Array.isArray(v)) walk(v, `${path}.${key}`);
+      }
+    };
+    walk(layer.ks, prefix);
+    return out;
+  }
+
+  openKeyframeFromMarker(marker){
+    const frame = parseFloat(marker.dataset.frame);
+    if (isNaN(frame)) return;
+    let paths = [];
+    try { paths = JSON.parse(marker.dataset.kfPaths || '[]'); } catch(_){}
+    const bar = marker.closest('.time-bar');
+    const row = marker.closest('.timeline-row');
+    const layerIndex = row ? parseInt(row.dataset.index, 10) : this.selectedLayerIndex;
+    if (isNaN(layerIndex)) return;
+
+    this.selectedLayerIndex = layerIndex;
+    this.currentFrame = frame;
+    if (this.animInstance) try { this.animInstance.goToAndStop(frame, true); } catch(_){}
+
+    // Выбираем свойство: текущее activeEasing если оно содержит этот кадр,
+    // иначе — первое animated-свойство с этим keyframe (или уже активный chip)
+    const layer = this.lottieData.layers[layerIndex];
+    let chosen = null;
+    if (layer){
+      if (this.activeEasing && this.activeEasing.frame === frame
+          && getPath(layer, this.activeEasing.path)?.a === 1
+          && getPath(layer, this.activeEasing.path).k.some(k => k.t === frame)){
+        chosen = this.activeEasing.path;
+      } else {
+        // среди чипов правой панели ищем тот же кадр — берём последний совпавший chip
+        const chips = [...this.propsContainer.querySelectorAll('.kf-chip')]
+          .filter(c => parseFloat(c.dataset.kfFrame) === frame);
+        const chipPaths = chips.map(c => c.dataset.kfPath);
+        chosen = chipPaths[chipPaths.length - 1] || paths[0] || null;
+      }
+    }
+    this.activeEasing = chosen ? { path: chosen, frame } : null;
+
+    this.updatePlayhead();
+    this.updateFrameDisplay();
+    this.renderLayers();
+    this.renderTimeline();
+    this.renderProps();
+    // Прокрутка к активному чипу в правой панели
+    const activeChip = this.propsContainer.querySelector('.kf-chip.active');
+    if (activeChip) activeChip.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
 
   attachBarDrag(bar, row, layerIndex){
