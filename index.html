@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lottie Editor v0.4</title>
+<title>Lottie Editor v0.5</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
 <style>
 :root {
@@ -11,6 +11,7 @@
   --border:#3e3e42; --accent:#0e639c; --accent-h:#1177bb;
   --text:#ccc; --text-dim:#888; --playhead:#ff4444;
   --bar:#4a90e2; --bar-h:#5a9cec; --kf:#ffb700;
+  --phys:#a06cd5;
 }
 * { box-sizing:border-box; }
 html,body { margin:0; padding:0; height:100%; overflow:hidden; }
@@ -29,7 +30,6 @@ lottie-editor { display:block; height:100vh; }
 .sidebar-right { grid-column:3; grid-row:2/4; }
 .timeline-area { grid-column:2; grid-row:3; }
 
-/* Toolbar */
 .toolbar {
   display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:6px 12px;
   background:var(--bg-3); border-bottom:1px solid var(--border);
@@ -58,7 +58,6 @@ lottie-editor { display:block; height:100vh; }
 }
 .dropdown-menu button:hover { background:var(--accent); color:#fff; }
 
-/* Sidebar left */
 .sidebar-left {
   background:var(--bg-2); border-right:1px solid var(--border);
   display:flex; flex-direction:column; overflow:hidden;
@@ -76,7 +75,6 @@ lottie-editor { display:block; height:100vh; }
   position:relative;
 }
 .layer-item:hover { background:var(--bg-3); }
-.layer-item:active { cursor:grabbing; }
 .layer-item.selected { background:var(--accent); color:#fff; }
 .layer-item.dragging { opacity:0.35; }
 .layer-item.drop-above { box-shadow: inset 0 3px 0 var(--accent); }
@@ -90,13 +88,11 @@ lottie-editor { display:block; height:100vh; }
 }
 .layer-item:hover .drag-grip { opacity:0.9; }
 
-/* Stage */
 .stage { background:#1a1a1a; display:flex; align-items:center; justify-content:center; overflow:auto; }
 .preview-container { background:#111; box-shadow:0 4px 20px rgba(0,0,0,0.5); border-radius:4px; overflow:hidden; flex-shrink:0; }
 .lottie-mount { width:100%; height:100%; }
 .lottie-mount svg { display:block; }
 
-/* Sidebar right */
 .sidebar-right {
   background:var(--bg-2); border-left:1px solid var(--border);
   overflow-y:auto; padding:12px; font-size:12px;
@@ -139,7 +135,6 @@ lottie-editor { display:block; height:100vh; }
 .danger-btn:disabled { opacity:0.4; cursor:not-allowed; }
 .empty-note { color:var(--text-dim); font-style:italic; font-size:12px; }
 
-/* Easing editor */
 .easing-editor {
   margin-top:10px; padding:10px; background:#1a1a1a;
   border:1px solid var(--border); border-radius:4px;
@@ -174,12 +169,21 @@ lottie-editor { display:block; height:100vh; }
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 .easing-presets button:hover { background:var(--accent); color:#fff; border-color:var(--accent); }
+.easing-presets.phys button {
+  border-color:#5a3a7a; color:#c8a8e8;
+}
+.easing-presets.phys button:hover {
+  background:var(--phys); color:#fff; border-color:var(--phys);
+}
+.easing-section-label {
+  font-size:10px; color:var(--text-dim); text-transform:uppercase;
+  letter-spacing:0.5px; margin-top:8px;
+}
 .easing-readout {
   font-family:'Consolas',monospace; font-size:10px;
   color:var(--text-dim); text-align:center; margin-top:6px; line-height:1.4;
 }
 
-/* Timeline */
 .timeline-area {
   background:var(--bg-2); border-top:1px solid var(--border);
   display:flex; flex-direction:column; overflow:hidden;
@@ -225,7 +229,20 @@ lottie-editor { display:block; height:100vh; }
     repeating-linear-gradient(to right, rgba(255,255,255,0.035) 0 1px, transparent 1px var(--grid-minor, 40px)),
     repeating-linear-gradient(to right, rgba(255,255,255,0.08) 0 1px, transparent 1px var(--grid-major, 200px));
 }
-.timeline-row { height:36px; border-bottom:1px solid var(--border); position:relative; }
+.timeline-row {
+  height:36px; border-bottom:1px solid var(--border); position:relative;
+  cursor:grab;
+}
+.timeline-row:active { cursor:grabbing; }
+.timeline-row.dragging { opacity:0.4; }
+.timeline-row.drop-above::before {
+  content:''; position:absolute; top:-1px; left:0; right:0; height:3px;
+  background:var(--accent); z-index:20; pointer-events:none;
+}
+.timeline-row.drop-below::after {
+  content:''; position:absolute; bottom:-1px; left:0; right:0; height:3px;
+  background:var(--accent); z-index:20; pointer-events:none;
+}
 .time-bar {
   position:absolute; top:8px; height:20px;
   background:linear-gradient(180deg,var(--bar),#357abd);
@@ -233,6 +250,7 @@ lottie-editor { display:block; height:100vh; }
   font-size:10px; color:#fff;
   box-shadow:0 1px 3px rgba(0,0,0,0.3);
   min-width:12px; user-select:none; touch-action:none; overflow:hidden;
+  cursor:grab;
 }
 .time-bar:hover { background:linear-gradient(180deg,var(--bar-h),#4085c7); }
 .time-bar.selected { outline:2px solid var(--kf); }
@@ -265,7 +283,6 @@ lottie-editor { display:block; height:100vh; }
   background:var(--playhead); pointer-events:none; z-index:4;
 }
 
-/* JSON */
 .json-panel {
   position:absolute; top:0; left:0; right:0; bottom:0;
   background:var(--bg-1); display:flex; flex-direction:column; z-index:200;
@@ -397,7 +414,7 @@ function makeTextLayer(name, text, size, color, ip, op, ind){
   };
 }
 
-// ============ Easing утилиты ============
+// ============ Easing ============
 const EASING_PRESETS = {
   'Linear':       [0, 0, 1, 1],
   'Ease':         [0.25, 0.1, 0.25, 1],
@@ -409,6 +426,26 @@ const EASING_PRESETS = {
   'Expo Out':     [0.19, 1, 0.22, 1]
 };
 
+// Настоящие физические кривые (для генерации keyframes)
+const PHYSICS_EASINGS = {
+  'Bounce': t => {
+    const n1 = 7.5625, d1 = 2.75;
+    if (t < 1/d1) return n1*t*t;
+    if (t < 2/d1) { t -= 1.5/d1; return n1*t*t + 0.75; }
+    if (t < 2.5/d1) { t -= 2.25/d1; return n1*t*t + 0.9375; }
+    t -= 2.625/d1; return n1*t*t + 0.984375;
+  },
+  'Elastic': t => {
+    if (t === 0 || t === 1) return t;
+    const c4 = (2 * Math.PI) / 3;
+    return Math.pow(2, -10*t) * Math.sin((t*10 - 0.75) * c4) + 1;
+  },
+  'Back': t => {
+    const c1 = 1.70158, c3 = c1 + 1;
+    return 1 + c3 * Math.pow(t-1, 3) + c1 * Math.pow(t-1, 2);
+  }
+};
+
 function readEasing(kf){
   if (!kf) return { p1: [0.5, 0.5], p2: [0.5, 0.5] };
   const read = (v, d) => {
@@ -416,13 +453,11 @@ function readEasing(kf){
     if (Array.isArray(v)) return v[0] ?? d;
     return v;
   };
-  const p1x = read(kf?.o?.x, 0.5);
-  const p1y = read(kf?.o?.y, 0.5);
-  const p2x = read(kf?.i?.x, 0.5);
-  const p2y = read(kf?.i?.y, 0.5);
-  return { p1: [p1x, p1y], p2: [p2x, p2y] };
+  return {
+    p1: [read(kf?.o?.x, 0.5), read(kf?.o?.y, 0.5)],
+    p2: [read(kf?.i?.x, 0.5), read(kf?.i?.y, 0.5)]
+  };
 }
-
 function writeEasing(kf, p1, p2){
   kf.o = { x: [p1[0]], y: [p1[1]] };
   kf.i = { x: [p2[0]], y: [p2[1]] };
@@ -443,7 +478,7 @@ class LottieEditor extends HTMLElement {
     this.zoom = 1;
     this.selectedLayerIndex = -1;
     this._syncingScroll = false;
-    this.activeEasing = null; // { path, frame }
+    this.activeEasing = null;
     this._dragSrcIndex = -1;
   }
 
@@ -476,7 +511,7 @@ class LottieEditor extends HTMLElement {
           <div class="sep"></div>
           <button data-action="toggle-view">📝 Code View</button>
           <div style="flex:1"></div>
-          <span style="color:var(--text-dim);font-size:11px;">Lottie Editor v0.4</span>
+          <span style="color:var(--text-dim);font-size:11px;">Lottie Editor v0.5</span>
         </div>
 
         <div class="sidebar-left">
@@ -500,7 +535,7 @@ class LottieEditor extends HTMLElement {
             <button data-action="zoom-in">+</button>
             <button data-action="zoom-fit">Fit</button>
             <div class="sep"></div>
-            <span style="color:var(--text-dim); font-size:10px;">Ctrl+колесо для зума</span>
+            <span style="color:var(--text-dim); font-size:10px;">Ctrl+колесо · Shift+колесо для горизонтали</span>
           </div>
           <div class="timeline-body">
             <div class="ruler-wrap"><div class="ruler"></div></div>
@@ -541,7 +576,6 @@ class LottieEditor extends HTMLElement {
   }
 
   attachEvents(){
-    // Toolbar
     this.toolbar.addEventListener('click', e => {
       const btn = e.target.closest('button');
       if (!btn) return;
@@ -568,7 +602,6 @@ class LottieEditor extends HTMLElement {
 
     this.fileInput.addEventListener('change', e => this.handleImport(e));
 
-    // Timeline toolbar
     this.querySelector('.timeline-toolbar').addEventListener('click', e => {
       const b = e.target.closest('button');
       if (!b) return;
@@ -578,15 +611,30 @@ class LottieEditor extends HTMLElement {
       else if (a === 'zoom-fit') this.setZoom(1);
     });
 
-    // Ctrl+wheel zoom
+    // Ctrl+колесо для зума и Shift+колесо для горизонтали
     this.timelineBody.addEventListener('wheel', e => {
-      if (!e.ctrlKey && !e.metaKey) return;
-      e.preventDefault();
-      const factor = e.deltaY < 0 ? 1.15 : 1/1.15;
-      this.setZoom(this.zoom * factor, e.clientX);
+      if (e.ctrlKey || e.metaKey){
+        e.preventDefault();
+        const factor = e.deltaY < 0 ? 1.15 : 1/1.15;
+        this.setZoom(this.zoom * factor, e.clientX);
+        return;
+      }
+      if (e.shiftKey){
+        e.preventDefault();
+        this.rowsWrap.scrollLeft += e.deltaY;
+        return;
+      }
     }, { passive: false });
 
-    // Ruler click
+    // Горизонтальный скролл колесом над линейкой
+    this.rulerWrap.addEventListener('wheel', e => {
+      if (e.ctrlKey || e.metaKey) return;
+      e.preventDefault();
+      const dx = e.shiftKey ? e.deltaY : (e.deltaX || e.deltaY);
+      this.rowsWrap.scrollLeft += dx;
+    }, { passive: false });
+
+    // Клик/драг по линейке — перемотка (кроме playhead)
     this.rulerWrap.addEventListener('pointerdown', e => {
       if (e.target.closest('.playhead-marker')) return;
       try { this.rulerWrap.setPointerCapture(e.pointerId); } catch(_){}
@@ -601,7 +649,7 @@ class LottieEditor extends HTMLElement {
       this.rulerWrap.addEventListener('pointerup', up);
     });
 
-    // Scroll sync
+    // Вертикальная синхронизация
     this.rowsWrap.addEventListener('scroll', () => {
       if (this._syncingScroll) return;
       this._syncingScroll = true;
@@ -616,25 +664,21 @@ class LottieEditor extends HTMLElement {
       requestAnimationFrame(() => { this._syncingScroll = false; });
     });
 
-    // Code view
     let deb;
     this.jsonTextarea.addEventListener('input', () => {
       clearTimeout(deb);
       deb = setTimeout(()=>this.applyJsonFromEditor(), 500);
     });
 
-    // Resize
     let rdeb;
     window.addEventListener('resize', () => {
       clearTimeout(rdeb);
       rdeb = setTimeout(()=>this.renderTimeline(), 120);
     });
 
-    // Props
     this.propsContainer.addEventListener('input', e => this.onPropInput(e));
     this.propsContainer.addEventListener('click', e => this.onPropClick(e));
 
-    // Easing SVG drag
     this.propsContainer.addEventListener('pointerdown', e => {
       const h = e.target.closest('.bezier-handle');
       if (h) this.startEasingDrag(h, e);
@@ -657,7 +701,6 @@ class LottieEditor extends HTMLElement {
     this.querySelectorAll('.dropdown.open').forEach(d => d.classList.remove('open'));
   }
 
-  // ========== Zoom ==========
   setZoom(z, anchorClientX){
     const old = this.zoom;
     this.zoom = clamp(z, 0.25, 8);
@@ -676,7 +719,6 @@ class LottieEditor extends HTMLElement {
     this.zoomLabel.textContent = Math.round(this.zoom * 100) + '%';
   }
 
-  // ========== Render all ==========
   renderAll(){
     this.totEl.textContent = this.lottieData.op;
     this.zoomLabel.textContent = Math.round(this.zoom * 100) + '%';
@@ -689,7 +731,6 @@ class LottieEditor extends HTMLElement {
     this.refreshJsonIfVisible();
   }
 
-  // ========== Preview ==========
   updatePreview(){
     if (this.animInstance){
       try { this.animInstance.destroy(); } catch(_){}
@@ -719,7 +760,7 @@ class LottieEditor extends HTMLElement {
     setTimeout(applyFrame, 80);
   }
 
-  // ========== Layers (with drag-n-drop) ==========
+  // ========== Layers panel ==========
   renderLayers(){
     this.layersList.innerHTML = '';
     this.lottieData.layers.forEach((layer, i) => {
@@ -739,8 +780,7 @@ class LottieEditor extends HTMLElement {
         <span class="name">${escapeHtml(layer.nm || 'Layer ' + i)}</span>
         <span class="idx">#${i}</span>`;
 
-      // Клик — выделение
-      item.addEventListener('click', (e) => {
+      item.addEventListener('click', () => {
         if (item.classList.contains('was-dragged')) return;
         this.selectedLayerIndex = i;
         if (this.activeEasing) this.activeEasing = null;
@@ -749,68 +789,8 @@ class LottieEditor extends HTMLElement {
         this.renderProps();
       });
 
-      // HTML5 DnD
-      item.addEventListener('dragstart', e => {
-        this._dragSrcIndex = i;
-        e.dataTransfer.effectAllowed = 'move';
-        try { e.dataTransfer.setData('text/plain', String(i)); } catch(_){}
-        item.classList.add('dragging');
-      });
-      item.addEventListener('dragend', () => {
-        item.classList.remove('dragging');
-        item.classList.remove('was-dragged');
-        this.layersList.querySelectorAll('.layer-item').forEach(el => {
-          el.classList.remove('drop-above', 'drop-below');
-        });
-        this._dragSrcIndex = -1;
-      });
-      item.addEventListener('dragover', e => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-        if (this._dragSrcIndex === i){
-          item.classList.remove('drop-above', 'drop-below');
-          return;
-        }
-        const rect = item.getBoundingClientRect();
-        const midY = rect.top + rect.height / 2;
-        const below = e.clientY > midY;
-        this.layersList.querySelectorAll('.layer-item').forEach(el => {
-          if (el !== item) el.classList.remove('drop-above', 'drop-below');
-        });
-        item.classList.toggle('drop-above', !below);
-        item.classList.toggle('drop-below', below);
-      });
-      item.addEventListener('dragleave', () => {
-        item.classList.remove('drop-above', 'drop-below');
-      });
-      item.addEventListener('drop', e => {
-        e.preventDefault();
-        const srcIdx = this._dragSrcIndex;
-        if (srcIdx < 0 || srcIdx === i) return;
-        const rect = item.getBoundingClientRect();
-        const midY = rect.top + rect.height / 2;
-        const below = e.clientY > midY;
-
-        const layers = this.lottieData.layers;
-        const selectedLayer = this.selectedLayerIndex >= 0 ? layers[this.selectedLayerIndex] : null;
-
-        const [moved] = layers.splice(srcIdx, 1);
-        let targetIdx = i;
-        if (srcIdx < i) targetIdx = i - 1;
-        if (below) targetIdx += 1;
-        targetIdx = clamp(targetIdx, 0, layers.length);
-        layers.splice(targetIdx, 0, moved);
-
-        // Сохранить выбранный слой
-        if (selectedLayer){
-          const newIdx = layers.indexOf(selectedLayer);
-          if (newIdx >= 0) this.selectedLayerIndex = newIdx;
-        }
-
-        // Пометить элемент, чтобы click не сработал после drag
-        item.classList.add('was-dragged');
-        setTimeout(() => item.classList.remove('was-dragged'), 0);
-
+      this.attachRowDnD(item, i, this.layersList, () => {
+        // Найти выбранный слой после перестановки
         this.updatePreview();
         this.renderLayers();
         this.renderTimeline();
@@ -819,6 +799,69 @@ class LottieEditor extends HTMLElement {
       });
 
       this.layersList.appendChild(item);
+    });
+  }
+
+  // Общий обработчик HTML5 DnD для слоёв и timeline-row
+  attachRowDnD(el, idx, container, onDrop){
+    el.addEventListener('dragstart', e => {
+      this._dragSrcIndex = idx;
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', String(idx)); } catch(_){}
+      el.classList.add('dragging');
+    });
+    el.addEventListener('dragend', () => {
+      el.classList.remove('dragging');
+      el.classList.remove('was-dragged');
+      container.querySelectorAll('.drop-above, .drop-below').forEach(x => {
+        x.classList.remove('drop-above', 'drop-below');
+      });
+      this._dragSrcIndex = -1;
+    });
+    el.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (this._dragSrcIndex === idx){
+        el.classList.remove('drop-above', 'drop-below');
+        return;
+      }
+      const rect = el.getBoundingClientRect();
+      const below = e.clientY > rect.top + rect.height / 2;
+      container.querySelectorAll('.drop-above, .drop-below').forEach(x => {
+        if (x !== el) x.classList.remove('drop-above', 'drop-below');
+      });
+      el.classList.toggle('drop-above', !below);
+      el.classList.toggle('drop-below', below);
+    });
+    el.addEventListener('dragleave', () => {
+      el.classList.remove('drop-above', 'drop-below');
+    });
+    el.addEventListener('drop', e => {
+      e.preventDefault();
+      const srcIdx = this._dragSrcIndex;
+      if (srcIdx < 0 || srcIdx === idx) return;
+      const rect = el.getBoundingClientRect();
+      const below = e.clientY > rect.top + rect.height / 2;
+
+      const layers = this.lottieData.layers;
+      const selectedLayer = this.selectedLayerIndex >= 0 ? layers[this.selectedLayerIndex] : null;
+
+      const [moved] = layers.splice(srcIdx, 1);
+      let targetIdx = idx;
+      if (srcIdx < idx) targetIdx = idx - 1;
+      if (below) targetIdx += 1;
+      targetIdx = clamp(targetIdx, 0, layers.length);
+      layers.splice(targetIdx, 0, moved);
+
+      if (selectedLayer){
+        const newIdx = layers.indexOf(selectedLayer);
+        if (newIdx >= 0) this.selectedLayerIndex = newIdx;
+      }
+
+      el.classList.add('was-dragged');
+      setTimeout(() => el.classList.remove('was-dragged'), 0);
+
+      onDrop();
     });
   }
 
@@ -865,9 +908,21 @@ class LottieEditor extends HTMLElement {
     this.lottieData.layers.forEach((layer, i) => {
       const row = document.createElement('div');
       row.className = 'timeline-row';
+      row.draggable = true;
+      row.dataset.index = i;
+
+      // DnD для строки — переиспользуем attachRowDnD
+      this.attachRowDnD(row, i, this.rowsInner, () => {
+        this.updatePreview();
+        this.renderLayers();
+        this.renderTimeline();
+        this.renderProps();
+        this.refreshJsonIfVisible();
+      });
 
       const bar = document.createElement('div');
       bar.className = 'time-bar' + (i === this.selectedLayerIndex ? ' selected' : '');
+      bar.draggable = false;
 
       const ip = layer.ip || 0;
       const op = layer.op || 0;
@@ -892,7 +947,7 @@ class LottieEditor extends HTMLElement {
         bar.appendChild(marker);
       });
 
-      this.attachBarDrag(bar, i);
+      this.attachBarDrag(bar, row, i);
       row.appendChild(bar);
       this.rowsInner.appendChild(row);
     });
@@ -918,10 +973,11 @@ class LottieEditor extends HTMLElement {
     return [...frames].sort((a,b)=>a-b);
   }
 
-  attachBarDrag(bar, layerIndex){
+  attachBarDrag(bar, row, layerIndex){
     bar.addEventListener('pointerdown', e => {
       e.preventDefault();
       e.stopPropagation();
+      row.draggable = false;
       try { bar.setPointerCapture(e.pointerId); } catch(_){}
       const mode = e.target.classList.contains('handle-left') ? 'left'
                  : e.target.classList.contains('handle-right') ? 'right'
@@ -951,6 +1007,7 @@ class LottieEditor extends HTMLElement {
         bar.removeEventListener('pointermove', onMove);
         bar.removeEventListener('pointerup', onUp);
         try { bar.releasePointerCapture(ev.pointerId); } catch(_){}
+        row.draggable = true;
 
         if (!moved){
           this.selectedLayerIndex = layerIndex;
@@ -1075,17 +1132,28 @@ class LottieEditor extends HTMLElement {
     }
     const layer = this.lottieData.layers[i];
     const f = Math.round(this.currentFrame);
-    const getK = (p) => {
-      const prop = getPath(layer, p);
-      if (!prop) return 0;
-      if (prop.a === 1 && Array.isArray(prop.k)) return this.evaluateProp(prop, f);
-      return prop.k;
+
+    // Исправленный getK: понимает путь вида "ks.p" и "ks.p.0"
+    const getK = (path) => {
+      const parts = path.split('.');
+      const lastPart = parts[parts.length - 1];
+      const isIndex = /^\d+$/.test(lastPart);
+      const propPath = isIndex ? parts.slice(0, -1).join('.') : path;
+      const propObj = getPath(layer, propPath);
+      if (propObj === undefined) return 0;
+      let val;
+      if (propObj && propObj.a === 1 && Array.isArray(propObj.k)){
+        val = this.evaluateProp(propObj, f);
+      } else if (propObj && propObj.k !== undefined){
+        val = propObj.k;
+      } else {
+        val = propObj;
+      }
+      if (isIndex && Array.isArray(val)){
+        return val[parseInt(lastPart, 10)] ?? 0;
+      }
+      return val;
     };
-    const px = getK('ks.p')?.[0] ?? 0;
-    const py = getK('ks.p')?.[1] ?? 0;
-    const scale = getK('ks.s')?.[0] ?? 100;
-    const rot = getK('ks.r') ?? 0;
-    const opacity = getK('ks.o') ?? 100;
 
     let fillColor = '#4a90e2';
     if (layer.ty === 4){
@@ -1112,35 +1180,35 @@ class LottieEditor extends HTMLElement {
       }
     }
 
-    const isAnimated = (p) => getPath(layer, p)?.a === 1;
-    const kfHere = (p) => {
-      const prop = getPath(layer, p);
+    const isAnimated = (propPath) => getPath(layer, propPath)?.a === 1;
+    const kfHere = (propPath) => {
+      const prop = getPath(layer, propPath);
       if (!prop || prop.a !== 1) return false;
       return prop.k.some(kf => kf.t === f);
     };
-    const kfChips = (p) => {
-      const prop = getPath(layer, p);
+    const kfChips = (propPath) => {
+      const prop = getPath(layer, propPath);
       if (!prop || prop.a !== 1) return '';
-      const active = this.activeEasing?.path === p;
+      const active = this.activeEasing?.path === propPath;
       return `<div class="kf-chips">${
         prop.k.map(k => {
           const isActive = active && this.activeEasing.frame === k.t;
-          return `<span class="kf-chip${isActive?' active':''}" data-seek="${k.t}" data-kf-path="${p}" data-kf-frame="${k.t}" title="Клик — перейти и открыть Easing">◆ ${k.t}</span>`;
+          return `<span class="kf-chip${isActive?' active':''}" data-seek="${k.t}" data-kf-path="${propPath}" data-kf-frame="${k.t}" title="Клик — перейти и открыть Easing">◆ ${k.t}</span>`;
         }).join('')
       }</div>`;
     };
 
-    const btn = (path, label) => `
+    // propPath — для ◆ и чипов, inputPath — для числового input
+    const btn = (propPath, inputPath, label) => `
       <div class="prop-row">
         <label>${label}</label>
-        <input type="number" data-prop="${path}" value="${Math.round(getK(path) ?? 0)}">
-        <button class="kf-btn ${isAnimated(path)?'on':''} ${kfHere(path)?'on':''}"
-                data-kf="${path}" title="Keyframe">◆</button>
+        <input type="number" data-prop="${inputPath}" value="${Math.round(getK(inputPath) ?? 0)}">
+        <button class="kf-btn ${isAnimated(propPath)?'on':''} ${kfHere(propPath)?'on':''}"
+                data-kf="${propPath}" title="Keyframe">◆</button>
       </div>
-      ${kfChips(path)}
+      ${kfChips(propPath)}
     `;
 
-    // Easing editor (если активен)
     let easingHTML = '';
     if (this.activeEasing){
       const path = this.activeEasing.path;
@@ -1181,11 +1249,11 @@ class LottieEditor extends HTMLElement {
       </div>
 
       <h4>Transform</h4>
-      ${btn('ks.p.0', 'Pos X')}
-      ${btn('ks.p.1', 'Pos Y')}
-      ${btn('ks.s.0', 'Scale')}
-      ${btn('ks.r',   'Rotate')}
-      ${btn('ks.o',   'Opacity')}
+      ${btn('ks.p', 'ks.p.0', 'Pos X')}
+      ${btn('ks.p', 'ks.p.1', 'Pos Y')}
+      ${btn('ks.s', 'ks.s.0', 'Scale')}
+      ${btn('ks.r', 'ks.r',   'Rotate')}
+      ${btn('ks.o', 'ks.o',   'Opacity')}
 
       ${easingHTML}
 
@@ -1207,16 +1275,13 @@ class LottieEditor extends HTMLElement {
   }
 
   buildEasingEditor(path, kf, p1, p2){
-    // SVG: 200x200, padding 20, рабочая область 160x160
     const pad = 20, size = 200, inner = size - pad * 2;
     const toSvg = (x, y) => [pad + x * inner, pad + (1 - y) * inner];
-
     const [x0, y0] = toSvg(0, 0);
     const [x3, y3] = toSvg(1, 1);
     const [c1x, c1y] = toSvg(p1[0], p1[1]);
     const [c2x, c2y] = toSvg(p2[0], p2[1]);
 
-    // Grid lines
     let gridSVG = '';
     for (let i = 0; i <= 4; i++){
       const t = i / 4;
@@ -1226,8 +1291,12 @@ class LottieEditor extends HTMLElement {
       gridSVG += `<line class="bezier-grid-line" x1="${pad}" y1="${gy}" x2="${size - pad}" y2="${gy}"/>`;
     }
 
-    const presetButtons = Object.keys(EASING_PRESETS).map(name => 
+    const presetButtons = Object.keys(EASING_PRESETS).map(name =>
       `<button data-preset="${name}">${name}</button>`
+    ).join('');
+
+    const physButtons = Object.keys(PHYSICS_EASINGS).map(name =>
+      `<button data-phys-preset="${name}">${name}</button>`
     ).join('');
 
     return `
@@ -1251,7 +1320,10 @@ class LottieEditor extends HTMLElement {
             <circle class="bezier-handle" data-handle="2" cx="${c2x}" cy="${c2y}" r="6"/>
           </svg>
         </div>
+        <div class="easing-section-label">Bezier</div>
         <div class="easing-presets">${presetButtons}</div>
+        <div class="easing-section-label">Физика (генерация keyframes)</div>
+        <div class="easing-presets phys">${physButtons}</div>
         <div class="easing-readout">
           P1: (${p1[0].toFixed(2)}, ${p1[1].toFixed(2)}) &nbsp; P2: (${p2[0].toFixed(2)}, ${p2[1].toFixed(2)})
         </div>
@@ -1259,7 +1331,6 @@ class LottieEditor extends HTMLElement {
     `;
   }
 
-  // ========== Easing drag ==========
   startEasingDrag(handle, e){
     e.preventDefault();
     const svg = handle.closest('.easing-svg');
@@ -1269,18 +1340,14 @@ class LottieEditor extends HTMLElement {
     const handleNum = parseInt(handle.dataset.handle, 10);
 
     try { svg.setPointerCapture(e.pointerId); } catch(_){}
-
     const pad = 20, size = 200, inner = size - pad * 2;
 
     const onMove = ev => {
       const rect = svg.getBoundingClientRect();
-      // Переводим клиентские координаты в координаты SVG viewBox
       const svgX = (ev.clientX - rect.left) / rect.width * size;
       const svgY = (ev.clientY - rect.top) / rect.height * size;
-      // Из SVG в (0..1) с инверсией Y
       let nx = (svgX - pad) / inner;
       let ny = 1 - (svgY - pad) / inner;
-      // Ограничения: x ∈ [0,1], y ∈ [-1, 2]
       nx = clamp(nx, 0, 1);
       ny = clamp(ny, -1, 2);
 
@@ -1294,10 +1361,8 @@ class LottieEditor extends HTMLElement {
 
       if (handleNum === 1) cur.p1 = [nx, ny];
       else cur.p2 = [nx, ny];
-
       writeEasing(kf, cur.p1, cur.p2);
 
-      // Обновляем SVG визуально
       const toSvg = (x, y) => [pad + x * inner, pad + (1 - y) * inner];
       const [c1x, c1y] = toSvg(cur.p1[0], cur.p1[1]);
       const [c2x, c2y] = toSvg(cur.p2[0], cur.p2[1]);
@@ -1315,7 +1380,6 @@ class LottieEditor extends HTMLElement {
       svg.querySelector('.bezier-curve').setAttribute('d',
         `M ${x0} ${y0} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${x3} ${y3}`);
 
-      // Readout
       const readout = svg.closest('.easing-editor').querySelector('.easing-readout');
       if (readout){
         readout.textContent = `P1: (${cur.p1[0].toFixed(2)}, ${cur.p1[1].toFixed(2)})  P2: (${cur.p2[0].toFixed(2)}, ${cur.p2[1].toFixed(2)})`;
@@ -1326,7 +1390,6 @@ class LottieEditor extends HTMLElement {
       svg.removeEventListener('pointermove', onMove);
       svg.removeEventListener('pointerup', onUp);
       try { svg.releasePointerCapture(ev.pointerId); } catch(_){}
-      // Обновить превью и JSON
       this.updatePreview();
       this.renderTimeline();
       this.refreshJsonIfVisible();
@@ -1345,6 +1408,7 @@ class LottieEditor extends HTMLElement {
     for (let i=0;i<kfs.length-1;i++){
       const a = kfs[i], b = kfs[i+1];
       if (frame >= a.t && frame <= b.t){
+        if (b.t === a.t) return a.s;
         const t = (frame - a.t) / (b.t - a.t);
         const sa = Array.isArray(a.s) ? a.s : [a.s];
         const sb = Array.isArray(b.s) ? b.s : [b.s];
@@ -1367,7 +1431,6 @@ class LottieEditor extends HTMLElement {
     return null;
   }
 
-  // ========== Props input ==========
   onPropInput(e){
     const el = e.target;
     if (!el.dataset.prop) return;
@@ -1453,20 +1516,23 @@ class LottieEditor extends HTMLElement {
     }
   }
 
-  // ========== Props click ==========
   onPropClick(e){
-    // Пресет easing
-    const presetBtn = e.target.closest('[data-preset]');
-    if (presetBtn && this.activeEasing){
-      const name = presetBtn.dataset.preset;
-      const vals = EASING_PRESETS[name];
-      if (vals){
-        this.applyEasingToActive([vals[0], vals[1]], [vals[2], vals[3]]);
-      }
+    // Physics-пресет
+    const physBtn = e.target.closest('[data-phys-preset]');
+    if (physBtn && this.activeEasing){
+      this.applyPhysics(physBtn.dataset.physPreset);
       return;
     }
 
-    // kf-chip: переход + открытие easing
+    // Bezier-пресет
+    const presetBtn = e.target.closest('[data-preset]');
+    if (presetBtn && this.activeEasing){
+      const vals = EASING_PRESETS[presetBtn.dataset.preset];
+      if (vals) this.applyEasingToActive([vals[0], vals[1]], [vals[2], vals[3]]);
+      return;
+    }
+
+    // kf-chip
     const chip = e.target.closest('.kf-chip');
     if (chip){
       const f = parseFloat(chip.dataset.seek);
@@ -1489,7 +1555,6 @@ class LottieEditor extends HTMLElement {
       this.renderProps();
       return;
     }
-
     if (btn.dataset.kf){ this.toggleKeyframe(btn.dataset.kf); return; }
 
     const a = btn.dataset.action;
@@ -1543,10 +1608,61 @@ class LottieEditor extends HTMLElement {
     const kf = prop.k.find(k => k.t === this.activeEasing.frame);
     if (!kf) return;
     writeEasing(kf, p1, p2);
-    this.updatePreview();
-    this.renderTimeline();
-    this.renderProps();
-    this.refreshJsonIfVisible();
+    this.updatePreview(); this.renderTimeline(); this.renderProps(); this.refreshJsonIfVisible();
+  }
+
+  // Физический easing: заменяем сегмент на N keyframes, семплированных по кривой
+  applyPhysics(key){
+    const fn = PHYSICS_EASINGS[key];
+    if (!fn || !this.activeEasing) return;
+    const layer = this.lottieData.layers[this.selectedLayerIndex];
+    if (!layer) return;
+    const prop = getPath(layer, this.activeEasing.path);
+    if (!prop || prop.a !== 1) return;
+    const idx = prop.k.findIndex(k => k.t === this.activeEasing.frame);
+    if (idx < 0 || idx >= prop.k.length - 1) return;
+
+    const a = prop.k[idx], b = prop.k[idx + 1];
+    const len = b.t - a.t;
+    const steps = clamp(Math.round(len / 2), 6, 25);
+    const newKFs = this.generatePhysicsKF(a.t, b.t, a.s, b.s, fn, steps);
+    prop.k.splice(idx, 2, ...newKFs);
+
+    // Закрываем easing-редактор — сегмент перестроен, старая привязка невалидна
+    this.activeEasing = null;
+    this.updatePreview(); this.renderTimeline(); this.renderProps(); this.refreshJsonIfVisible();
+  }
+
+  generatePhysicsKF(startF, endF, startVal, endVal, easeFn, steps){
+    const isArr = Array.isArray(startVal);
+    const kfs = [];
+    for (let i = 0; i <= steps; i++){
+      const t = i / steps;
+      const eased = easeFn(t);
+      let s;
+      if (isArr){
+        s = startVal.map((v, k) => v + ((endVal[k] ?? v) - v) * eased);
+      } else {
+        s = startVal + (endVal - startVal) * eased;
+      }
+      const fr = Math.round(startF + (endF - startF) * t);
+      kfs.push({ t: fr, s });
+    }
+    // Дедупликация по кадру
+    const seen = new Set();
+    const uniq = [];
+    for (const kf of kfs){
+      if (!seen.has(kf.t)){
+        seen.add(kf.t);
+        uniq.push(kf);
+      }
+    }
+    // Проставляем линейные bezier i/o между сгенерированными kf
+    for (let i = 0; i < uniq.length - 1; i++){
+      uniq[i].i = {x:[0.5], y:[0.5]};
+      uniq[i].o = {x:[0.5], y:[0.5]};
+    }
+    return uniq;
   }
 
   toggleKeyframe(path){
@@ -1590,7 +1706,6 @@ class LottieEditor extends HTMLElement {
     this.updatePreview(); this.renderTimeline(); this.renderProps(); this.refreshJsonIfVisible();
   }
 
-  // ========== Add layers ==========
   addShapeLayer(type){
     const op = this.lottieData.op || 90;
     const ind = nextLayerInd(this.lottieData);
@@ -1616,7 +1731,6 @@ class LottieEditor extends HTMLElement {
     this.renderProps(); this.refreshJsonIfVisible();
   }
 
-  // ========== Code view ==========
   toggleView(){
     this.viewMode = this.viewMode === 'visual' ? 'code' : 'visual';
     const b = this.toolbar.querySelector('[data-action="toggle-view"]');
@@ -1652,7 +1766,6 @@ class LottieEditor extends HTMLElement {
     }
   }
 
-  // ========== Files ==========
   handleImport(e){
     const file = e.target.files?.[0];
     if (!file) return;
