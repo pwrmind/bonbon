@@ -1280,15 +1280,42 @@ class LottieEditor extends HTMLElement {
     this.updatePlayhead(); this.updateFrameDisplay(); this.renderProps();
   }
 
-  // ИСПРАВЛЕНО: убрано Math.max(0, ...) — все три поля сдвигаются симметрично
   shiftLayerTime(index, delta){
     const l = this.lottieData.layers[index];
     if (!l) return;
+    // 1. Смещаем окно видимости
     l.ip = (l.ip || 0) + delta;
     l.op = (l.op || 0) + delta;
-    l.st = (l.st || 0) + delta;
+    // 2. Смещаем все keyframes внутри слоя (transform, shapes, текст)
+    this.shiftLayerKeyframes(l, delta);
     if (l.op <= l.ip) l.op = l.ip + 1;
     this.updatePreview(); this.renderTimeline(); this.renderProps(); this.refreshJsonIfVisible();
+  }
+
+  shiftLayerKeyframes(layer, delta){
+    const walk = (obj) => {
+      if (!obj || typeof obj !== 'object') return;
+      if (Array.isArray(obj)){
+        for (let i = 0; i < obj.length; i++) walk(obj[i]);
+        return;
+      }
+      // Анимированное свойство Lottie: {a:1, k:[{t,s,i,o}, ...]}
+      if (obj.a === 1 && Array.isArray(obj.k)){
+        for (let i = 0; i < obj.k.length; i++){
+          const kf = obj.k[i];
+          if (kf && typeof kf.t === 'number') kf.t += delta;
+        }
+        return;
+      }
+      for (const key in obj){
+        if (!Object.prototype.hasOwnProperty.call(obj, key)) continue;
+        const v = obj[key];
+        if (v && typeof v === 'object') walk(v);
+      }
+    };
+    if (layer.ks) walk(layer.ks);
+    if (layer.shapes) walk(layer.shapes);
+    if (layer.t) walk(layer.t);
   }
 
   updatePlayhead(){
