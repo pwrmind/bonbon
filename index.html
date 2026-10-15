@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lottie Editor v0.3</title>
+<title>Lottie Editor v0.4</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
 <style>
 :root {
@@ -29,7 +29,7 @@ lottie-editor { display:block; height:100vh; }
 .sidebar-right { grid-column:3; grid-row:2/4; }
 .timeline-area { grid-column:2; grid-row:3; }
 
-/* ---------- Toolbar ---------- */
+/* Toolbar */
 .toolbar {
   display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:6px 12px;
   background:var(--bg-3); border-bottom:1px solid var(--border);
@@ -58,7 +58,7 @@ lottie-editor { display:block; height:100vh; }
 }
 .dropdown-menu button:hover { background:var(--accent); color:#fff; }
 
-/* ---------- Sidebar left ---------- */
+/* Sidebar left */
 .sidebar-left {
   background:var(--bg-2); border-right:1px solid var(--border);
   display:flex; flex-direction:column; overflow:hidden;
@@ -72,21 +72,31 @@ lottie-editor { display:block; height:100vh; }
 .layers-list { flex:1; overflow-y:auto; overflow-x:hidden; }
 .layer-item {
   display:flex; align-items:center; gap:8px; height:36px; padding:0 12px;
-  border-bottom:1px solid var(--border); cursor:pointer; user-select:none;
+  border-bottom:1px solid var(--border); cursor:grab; user-select:none;
+  position:relative;
 }
 .layer-item:hover { background:var(--bg-3); }
+.layer-item:active { cursor:grabbing; }
 .layer-item.selected { background:var(--accent); color:#fff; }
+.layer-item.dragging { opacity:0.35; }
+.layer-item.drop-above { box-shadow: inset 0 3px 0 var(--accent); }
+.layer-item.drop-below { box-shadow: inset 0 -3px 0 var(--accent); }
 .layer-item .icon { font-size:13px; width:16px; text-align:center; flex-shrink:0; }
 .layer-item .name { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .layer-item .idx { font-family:'Consolas',monospace; font-size:10px; opacity:0.5; }
+.layer-item .drag-grip {
+  color:var(--text-dim); font-size:11px; letter-spacing:-1px;
+  opacity:0.4; cursor:grab;
+}
+.layer-item:hover .drag-grip { opacity:0.9; }
 
-/* ---------- Stage ---------- */
+/* Stage */
 .stage { background:#1a1a1a; display:flex; align-items:center; justify-content:center; overflow:auto; }
 .preview-container { background:#111; box-shadow:0 4px 20px rgba(0,0,0,0.5); border-radius:4px; overflow:hidden; flex-shrink:0; }
 .lottie-mount { width:100%; height:100%; }
 .lottie-mount svg { display:block; }
 
-/* ---------- Sidebar right ---------- */
+/* Sidebar right */
 .sidebar-right {
   background:var(--bg-2); border-left:1px solid var(--border);
   overflow-y:auto; padding:12px; font-size:12px;
@@ -121,13 +131,55 @@ lottie-editor { display:block; height:100vh; }
   border-radius:3px; padding:1px 5px; cursor:pointer;
 }
 .kf-chip:hover { color:var(--kf); border-color:var(--kf); }
+.kf-chip.active { color:#fff; border-color:var(--kf); background:rgba(255,183,0,0.25); }
 .danger-btn { background:#a33; color:#fff; border:none; border-radius:3px; padding:6px 10px; cursor:pointer; font-size:12px; margin-top:8px; width:100%; }
 .danger-btn:hover { background:#c44; }
-.secondary-btn { background:var(--accent); }
-.secondary-btn:hover { background:var(--accent-h); }
+.danger-btn.secondary { background:var(--accent); }
+.danger-btn.secondary:hover { background:var(--accent-h); }
+.danger-btn:disabled { opacity:0.4; cursor:not-allowed; }
 .empty-note { color:var(--text-dim); font-style:italic; font-size:12px; }
 
-/* ---------- Timeline ---------- */
+/* Easing editor */
+.easing-editor {
+  margin-top:10px; padding:10px; background:#1a1a1a;
+  border:1px solid var(--border); border-radius:4px;
+}
+.easing-editor h4 { margin:0 0 6px; display:flex; align-items:center; }
+.easing-editor h4 .easing-title { flex:1; }
+.easing-close {
+  background:none; border:none; color:var(--text-dim);
+  cursor:pointer; font-size:14px; line-height:1; padding:0 2px;
+}
+.easing-close:hover { color:#fff; }
+.easing-svg-wrap { display:flex; justify-content:center; margin:6px 0; }
+.easing-svg {
+  width:200px; height:200px; background:#0f0f0f; border-radius:4px;
+  touch-action:none; user-select:none;
+}
+.bezier-grid-line { stroke:#262626; stroke-width:0.5; }
+.bezier-axis { stroke:#3a3a3a; stroke-width:1; }
+.bezier-diagonal { stroke:#3a3a3a; stroke-width:1; stroke-dasharray:3 3; }
+.bezier-handle-line { stroke:#555; stroke-width:1; }
+.bezier-curve { stroke:var(--kf); stroke-width:2; fill:none; }
+.bezier-handle { fill:var(--kf); stroke:#fff; stroke-width:1.5; cursor:grab; }
+.bezier-handle:hover { fill:#ffd966; }
+.bezier-handle:active { cursor:grabbing; fill:#ffd966; }
+.bezier-endpoint { fill:#666; }
+.easing-presets {
+  display:grid; grid-template-columns:repeat(4, 1fr); gap:3px; margin-top:6px;
+}
+.easing-presets button {
+  padding:4px 4px; font-size:10px; background:var(--bg-3); color:var(--text);
+  border:1px solid var(--border); border-radius:3px; cursor:pointer;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.easing-presets button:hover { background:var(--accent); color:#fff; border-color:var(--accent); }
+.easing-readout {
+  font-family:'Consolas',monospace; font-size:10px;
+  color:var(--text-dim); text-align:center; margin-top:6px; line-height:1.4;
+}
+
+/* Timeline */
 .timeline-area {
   background:var(--bg-2); border-top:1px solid var(--border);
   display:flex; flex-direction:column; overflow:hidden;
@@ -146,10 +198,7 @@ lottie-editor { display:block; height:100vh; }
 .timeline-toolbar .zoom-label {
   font-family:'Consolas',monospace; color:var(--text-dim); min-width:44px; text-align:center;
 }
-
-.timeline-body {
-  flex:1; position:relative; overflow:hidden;
-}
+.timeline-body { flex:1; position:relative; overflow:hidden; }
 .ruler-wrap {
   position:absolute; top:0; left:0; right:0; height:28px;
   overflow:hidden; background:var(--bg-3);
@@ -166,7 +215,6 @@ lottie-editor { display:block; height:100vh; }
   pointer-events:none; white-space:nowrap;
 }
 .ruler-tick.major { border-left-color:#5a5a5a; color:var(--text); }
-
 .rows-wrap {
   position:absolute; top:28px; left:0; right:0; bottom:0;
   overflow:auto;
@@ -177,18 +225,14 @@ lottie-editor { display:block; height:100vh; }
     repeating-linear-gradient(to right, rgba(255,255,255,0.035) 0 1px, transparent 1px var(--grid-minor, 40px)),
     repeating-linear-gradient(to right, rgba(255,255,255,0.08) 0 1px, transparent 1px var(--grid-major, 200px));
 }
-.timeline-row {
-  height:36px; border-bottom:1px solid var(--border); position:relative;
-}
+.timeline-row { height:36px; border-bottom:1px solid var(--border); position:relative; }
 .time-bar {
   position:absolute; top:8px; height:20px;
   background:linear-gradient(180deg,var(--bar),#357abd);
-  border-radius:3px;
-  display:flex; align-items:stretch;
+  border-radius:3px; display:flex; align-items:stretch;
   font-size:10px; color:#fff;
   box-shadow:0 1px 3px rgba(0,0,0,0.3);
-  min-width:12px; user-select:none; touch-action:none;
-  overflow:hidden;
+  min-width:12px; user-select:none; touch-action:none; overflow:hidden;
 }
 .time-bar:hover { background:linear-gradient(180deg,var(--bar-h),#4085c7); }
 .time-bar.selected { outline:2px solid var(--kf); }
@@ -197,10 +241,8 @@ lottie-editor { display:block; height:100vh; }
   pointer-events:none; white-space:nowrap; overflow:hidden;
 }
 .handle {
-  width:7px; flex-shrink:0;
-  background:rgba(0,0,0,0.25);
-  cursor:ew-resize;
-  transition:background 0.1s;
+  width:7px; flex-shrink:0; background:rgba(0,0,0,0.25);
+  cursor:ew-resize; transition:background 0.1s;
 }
 .handle:hover { background:rgba(255,255,255,0.35); }
 .kf-marker {
@@ -208,11 +250,7 @@ lottie-editor { display:block; height:100vh; }
   transform:translate(-50%,0) rotate(45deg); top:5px;
   pointer-events:none; z-index:5;
 }
-
-.playhead-marker {
-  position:absolute; top:0; height:100%; width:0;
-  pointer-events:none; z-index:6;
-}
+.playhead-marker { position:absolute; top:0; height:100%; width:0; pointer-events:none; z-index:6; }
 .playhead-marker .head {
   position:absolute; top:0; left:-8px; width:16px; height:14px;
   background:var(--playhead); border-radius:0 0 4px 4px;
@@ -227,7 +265,7 @@ lottie-editor { display:block; height:100vh; }
   background:var(--playhead); pointer-events:none; z-index:4;
 }
 
-/* ---------- JSON ---------- */
+/* JSON */
 .json-panel {
   position:absolute; top:0; left:0; right:0; bottom:0;
   background:var(--bg-1); display:flex; flex-direction:column; z-index:200;
@@ -256,8 +294,9 @@ const DEMO_LOTTIE = {
       ks:{
         o:{a:0,k:100}, r:{a:0,k:0},
         p:{a:1,k:[
-          {i:{x:[0.5],y:[0.5]},o:{x:[0.5],y:[0.5]},t:0,s:[100,250,0]},
-          {t:60,s:[400,250,0]}
+          {i:{x:[0.4],y:[0.6]},o:{x:[0.3],y:[0.2]},t:0,s:[100,250,0]},
+          {i:{x:[0.5],y:[0.5]},o:{x:[0.5],y:[0.5]},t:60,s:[400,250,0]},
+          {t:90,s:[250,250,0]}
         ]},
         a:{a:0,k:[0,0,0]}, s:{a:0,k:[100,100,100]}
       },
@@ -270,7 +309,7 @@ const DEMO_LOTTIE = {
           {ty:"tr",p:{a:0,k:[0,0]},a:{a:0,k:[0,0]},s:{a:0,k:[100,100]},r:{a:0,k:0},o:{a:0,k:100},nm:"Transform"}
         ], nm:"Circle Group"
       }],
-      ip:0, op:60, st:0, bm:0
+      ip:0, op:90, st:0, bm:0
     },
     {
       ddd:0, ind:2, ty:4, nm:"Blue Square", sr:1,
@@ -358,6 +397,37 @@ function makeTextLayer(name, text, size, color, ip, op, ind){
   };
 }
 
+// ============ Easing утилиты ============
+const EASING_PRESETS = {
+  'Linear':       [0, 0, 1, 1],
+  'Ease':         [0.25, 0.1, 0.25, 1],
+  'Ease In':      [0.42, 0, 1, 1],
+  'Ease Out':     [0, 0, 0.58, 1],
+  'Ease In Out':  [0.42, 0, 0.58, 1],
+  'Back In':      [0.6, -0.28, 0.735, 0.045],
+  'Back Out':     [0.175, 0.885, 0.32, 1.275],
+  'Expo Out':     [0.19, 1, 0.22, 1]
+};
+
+function readEasing(kf){
+  if (!kf) return { p1: [0.5, 0.5], p2: [0.5, 0.5] };
+  const read = (v, d) => {
+    if (v == null) return d;
+    if (Array.isArray(v)) return v[0] ?? d;
+    return v;
+  };
+  const p1x = read(kf?.o?.x, 0.5);
+  const p1y = read(kf?.o?.y, 0.5);
+  const p2x = read(kf?.i?.x, 0.5);
+  const p2y = read(kf?.i?.y, 0.5);
+  return { p1: [p1x, p1y], p2: [p2x, p2y] };
+}
+
+function writeEasing(kf, p1, p2){
+  kf.o = { x: [p1[0]], y: [p1[1]] };
+  kf.i = { x: [p2[0]], y: [p2[1]] };
+}
+
 // ============ Главный компонент ============
 class LottieEditor extends HTMLElement {
   constructor(){
@@ -373,6 +443,8 @@ class LottieEditor extends HTMLElement {
     this.zoom = 1;
     this.selectedLayerIndex = -1;
     this._syncingScroll = false;
+    this.activeEasing = null; // { path, frame }
+    this._dragSrcIndex = -1;
   }
 
   connectedCallback(){
@@ -404,11 +476,11 @@ class LottieEditor extends HTMLElement {
           <div class="sep"></div>
           <button data-action="toggle-view">📝 Code View</button>
           <div style="flex:1"></div>
-          <span style="color:var(--text-dim);font-size:11px;">Lottie Editor v0.3</span>
+          <span style="color:var(--text-dim);font-size:11px;">Lottie Editor v0.4</span>
         </div>
 
         <div class="sidebar-left">
-          <div class="sidebar-header">Слои</div>
+          <div class="sidebar-header">Слои (перетаскивай для порядка)</div>
           <div class="layers-list"></div>
         </div>
 
@@ -423,10 +495,10 @@ class LottieEditor extends HTMLElement {
         <div class="timeline-area">
           <div class="timeline-toolbar">
             <span style="color:var(--text-dim);">Zoom:</span>
-            <button data-action="zoom-out" title="Уменьшить">−</button>
+            <button data-action="zoom-out">−</button>
             <span class="zoom-label">100%</span>
-            <button data-action="zoom-in" title="Увеличить">+</button>
-            <button data-action="zoom-fit" title="Уместить">Fit</button>
+            <button data-action="zoom-in">+</button>
+            <button data-action="zoom-fit">Fit</button>
             <div class="sep"></div>
             <span style="color:var(--text-dim); font-size:10px;">Ctrl+колесо для зума</span>
           </div>
@@ -475,8 +547,7 @@ class LottieEditor extends HTMLElement {
       if (!btn) return;
       const a = btn.dataset.action;
       if (a === 'add-toggle'){
-        const dd = this.toolbar.querySelector('[data-dropdown="add"]');
-        this.toggleDropdown(dd);
+        this.toggleDropdown(this.toolbar.querySelector('[data-dropdown="add"]'));
         e.stopPropagation();
         return;
       }
@@ -497,7 +568,7 @@ class LottieEditor extends HTMLElement {
 
     this.fileInput.addEventListener('change', e => this.handleImport(e));
 
-    // Timeline toolbar (zoom)
+    // Timeline toolbar
     this.querySelector('.timeline-toolbar').addEventListener('click', e => {
       const b = e.target.closest('button');
       if (!b) return;
@@ -507,7 +578,7 @@ class LottieEditor extends HTMLElement {
       else if (a === 'zoom-fit') this.setZoom(1);
     });
 
-    // Ctrl+wheel zoom на таймлайне
+    // Ctrl+wheel zoom
     this.timelineBody.addEventListener('wheel', e => {
       if (!e.ctrlKey && !e.metaKey) return;
       e.preventDefault();
@@ -515,7 +586,7 @@ class LottieEditor extends HTMLElement {
       this.setZoom(this.zoom * factor, e.clientX);
     }, { passive: false });
 
-    // Клик по линейке — перемотка
+    // Ruler click
     this.rulerWrap.addEventListener('pointerdown', e => {
       if (e.target.closest('.playhead-marker')) return;
       try { this.rulerWrap.setPointerCapture(e.pointerId); } catch(_){}
@@ -530,12 +601,12 @@ class LottieEditor extends HTMLElement {
       this.rulerWrap.addEventListener('pointerup', up);
     });
 
-    // Скролл синхронизация
+    // Scroll sync
     this.rowsWrap.addEventListener('scroll', () => {
       if (this._syncingScroll) return;
       this._syncingScroll = true;
       this.layersList.scrollTop = this.rowsWrap.scrollTop;
-      this.ruler.style.transform = `translateX(${-this.rowsWrap.scrollLeft}px)`;
+      if (this.ruler) this.ruler.style.transform = `translateX(${-this.rowsWrap.scrollLeft}px)`;
       requestAnimationFrame(() => { this._syncingScroll = false; });
     });
     this.layersList.addEventListener('scroll', () => {
@@ -545,7 +616,7 @@ class LottieEditor extends HTMLElement {
       requestAnimationFrame(() => { this._syncingScroll = false; });
     });
 
-    // Code View
+    // Code view
     let deb;
     this.jsonTextarea.addEventListener('input', () => {
       clearTimeout(deb);
@@ -562,6 +633,12 @@ class LottieEditor extends HTMLElement {
     // Props
     this.propsContainer.addEventListener('input', e => this.onPropInput(e));
     this.propsContainer.addEventListener('click', e => this.onPropClick(e));
+
+    // Easing SVG drag
+    this.propsContainer.addEventListener('pointerdown', e => {
+      const h = e.target.closest('.bezier-handle');
+      if (h) this.startEasingDrag(h, e);
+    });
   }
 
   toggleDropdown(dd){
@@ -585,23 +662,21 @@ class LottieEditor extends HTMLElement {
     const old = this.zoom;
     this.zoom = clamp(z, 0.25, 8);
     if (this.zoom === old) return;
-
     let anchorFrame = this.currentFrame;
     if (typeof anchorClientX === 'number'){
       const rect = this.timelineBody.getBoundingClientRect();
       anchorFrame = (anchorClientX - rect.left + this.rowsWrap.scrollLeft) / this.pxPerFrame;
     }
     this.renderTimeline();
-    // сохранить позицию anchorFrame по возможности
     if (typeof anchorClientX === 'number'){
       const rect = this.timelineBody.getBoundingClientRect();
       this.rowsWrap.scrollLeft = Math.max(0, anchorFrame * this.pxPerFrame - (anchorClientX - rect.left));
-      this.ruler.style.transform = `translateX(${-this.rowsWrap.scrollLeft}px)`;
+      if (this.ruler) this.ruler.style.transform = `translateX(${-this.rowsWrap.scrollLeft}px)`;
     }
     this.zoomLabel.textContent = Math.round(this.zoom * 100) + '%';
   }
 
-  // ========== Рендер всего ==========
+  // ========== Render all ==========
   renderAll(){
     this.totEl.textContent = this.lottieData.op;
     this.zoomLabel.textContent = Math.round(this.zoom * 100) + '%';
@@ -614,7 +689,7 @@ class LottieEditor extends HTMLElement {
     this.refreshJsonIfVisible();
   }
 
-  // ========== Превью ==========
+  // ========== Preview ==========
   updatePreview(){
     if (this.animInstance){
       try { this.animInstance.destroy(); } catch(_){}
@@ -644,32 +719,110 @@ class LottieEditor extends HTMLElement {
     setTimeout(applyFrame, 80);
   }
 
-  // ========== Слои (левая панель) ==========
+  // ========== Layers (with drag-n-drop) ==========
   renderLayers(){
     this.layersList.innerHTML = '';
     this.lottieData.layers.forEach((layer, i) => {
       const item = document.createElement('div');
       item.className = 'layer-item' + (i === this.selectedLayerIndex ? ' selected' : '');
+      item.draggable = true;
+      item.dataset.index = i;
       let icon = '◦';
       if (layer.ty === 4) icon = '⬛';
       else if (layer.ty === 5) icon = 'T';
       else if (layer.ty === 2) icon = '🖼';
       else if (layer.ty === 1) icon = '▭';
+
       item.innerHTML = `
+        <span class="drag-grip" title="Перетащи для изменения порядка">⋮⋮</span>
         <span class="icon">${icon}</span>
         <span class="name">${escapeHtml(layer.nm || 'Layer ' + i)}</span>
         <span class="idx">#${i}</span>`;
-      item.addEventListener('click', () => {
+
+      // Клик — выделение
+      item.addEventListener('click', (e) => {
+        if (item.classList.contains('was-dragged')) return;
         this.selectedLayerIndex = i;
+        if (this.activeEasing) this.activeEasing = null;
         this.renderLayers();
         this.renderTimeline();
         this.renderProps();
       });
+
+      // HTML5 DnD
+      item.addEventListener('dragstart', e => {
+        this._dragSrcIndex = i;
+        e.dataTransfer.effectAllowed = 'move';
+        try { e.dataTransfer.setData('text/plain', String(i)); } catch(_){}
+        item.classList.add('dragging');
+      });
+      item.addEventListener('dragend', () => {
+        item.classList.remove('dragging');
+        item.classList.remove('was-dragged');
+        this.layersList.querySelectorAll('.layer-item').forEach(el => {
+          el.classList.remove('drop-above', 'drop-below');
+        });
+        this._dragSrcIndex = -1;
+      });
+      item.addEventListener('dragover', e => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (this._dragSrcIndex === i){
+          item.classList.remove('drop-above', 'drop-below');
+          return;
+        }
+        const rect = item.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        const below = e.clientY > midY;
+        this.layersList.querySelectorAll('.layer-item').forEach(el => {
+          if (el !== item) el.classList.remove('drop-above', 'drop-below');
+        });
+        item.classList.toggle('drop-above', !below);
+        item.classList.toggle('drop-below', below);
+      });
+      item.addEventListener('dragleave', () => {
+        item.classList.remove('drop-above', 'drop-below');
+      });
+      item.addEventListener('drop', e => {
+        e.preventDefault();
+        const srcIdx = this._dragSrcIndex;
+        if (srcIdx < 0 || srcIdx === i) return;
+        const rect = item.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        const below = e.clientY > midY;
+
+        const layers = this.lottieData.layers;
+        const selectedLayer = this.selectedLayerIndex >= 0 ? layers[this.selectedLayerIndex] : null;
+
+        const [moved] = layers.splice(srcIdx, 1);
+        let targetIdx = i;
+        if (srcIdx < i) targetIdx = i - 1;
+        if (below) targetIdx += 1;
+        targetIdx = clamp(targetIdx, 0, layers.length);
+        layers.splice(targetIdx, 0, moved);
+
+        // Сохранить выбранный слой
+        if (selectedLayer){
+          const newIdx = layers.indexOf(selectedLayer);
+          if (newIdx >= 0) this.selectedLayerIndex = newIdx;
+        }
+
+        // Пометить элемент, чтобы click не сработал после drag
+        item.classList.add('was-dragged');
+        setTimeout(() => item.classList.remove('was-dragged'), 0);
+
+        this.updatePreview();
+        this.renderLayers();
+        this.renderTimeline();
+        this.renderProps();
+        this.refreshJsonIfVisible();
+      });
+
       this.layersList.appendChild(item);
     });
   }
 
-  // ========== Таймлайн ==========
+  // ========== Timeline ==========
   renderTimeline(){
     const totalFrames = this.lottieData.op || 1;
     const fps = this.lottieData.fr || 30;
@@ -678,7 +831,6 @@ class LottieEditor extends HTMLElement {
     this.pxPerFrame = Math.max(0.5, this.basePxPerFrame * this.zoom);
     const totalWidth = totalFrames * this.pxPerFrame;
 
-    // CSS переменные для фоновой сетки
     this.rowsInner.style.setProperty('--grid-minor', this.pxPerFrame + 'px');
     this.rowsInner.style.setProperty('--grid-major', (this.pxPerFrame * fps) + 'px');
     this.ruler.style.setProperty('--grid-minor', (this.pxPerFrame * fps) + 'px');
@@ -686,7 +838,6 @@ class LottieEditor extends HTMLElement {
     this.ruler.style.width = totalWidth + 'px';
     this.rowsInner.style.width = totalWidth + 'px';
 
-    // Линейка: деления
     this.ruler.innerHTML = '';
     const minorInterval = Math.max(1, Math.round(fps / 2));
     for (let f = 0; f <= totalFrames; f += minorInterval){
@@ -699,17 +850,14 @@ class LottieEditor extends HTMLElement {
       this.ruler.appendChild(tick);
     }
 
-    // Playhead marker
     this.playheadMarker = document.createElement('div');
     this.playheadMarker.className = 'playhead-marker';
     this.playheadMarker.innerHTML = `<div class="head"></div><div class="stem"></div>`;
     this.ruler.appendChild(this.playheadMarker);
     this.attachPlayheadDrag(this.playheadMarker);
 
-    // Строки
     this.rowsInner.innerHTML = '';
 
-    // Playhead line
     this.playheadLine = document.createElement('div');
     this.playheadLine.className = 'playhead-line';
     this.rowsInner.appendChild(this.playheadLine);
@@ -723,10 +871,8 @@ class LottieEditor extends HTMLElement {
 
       const ip = layer.ip || 0;
       const op = layer.op || 0;
-      const left = ip * this.pxPerFrame;
-      const w = Math.max((op - ip) * this.pxPerFrame, 12);
-      bar.style.left = left + 'px';
-      bar.style.width = w + 'px';
+      bar.style.left = (ip * this.pxPerFrame) + 'px';
+      bar.style.width = Math.max((op - ip) * this.pxPerFrame, 12) + 'px';
 
       const hL = document.createElement('div');
       hL.className = 'handle handle-left';
@@ -737,7 +883,6 @@ class LottieEditor extends HTMLElement {
       hR.className = 'handle handle-right';
       bar.appendChild(hL); bar.appendChild(label); bar.appendChild(hR);
 
-      // Keyframe маркеры
       const kfFrames = this.collectKeyframeFrames(layer);
       kfFrames.forEach(f => {
         if (f < ip || f > op) return;
@@ -752,8 +897,7 @@ class LottieEditor extends HTMLElement {
       this.rowsInner.appendChild(row);
     });
 
-    // Восстанавливаем горизонтальный скролл и playhead позицию
-    this.ruler.style.transform = `translateX(${-this.rowsWrap.scrollLeft}px)`;
+    if (this.ruler) this.ruler.style.transform = `translateX(${-this.rowsWrap.scrollLeft}px)`;
     this.updatePlayhead();
   }
 
@@ -774,25 +918,22 @@ class LottieEditor extends HTMLElement {
     return [...frames].sort((a,b)=>a-b);
   }
 
-  // ========== Time-bar: drag body/handles ==========
   attachBarDrag(bar, layerIndex){
     bar.addEventListener('pointerdown', e => {
       e.preventDefault();
       e.stopPropagation();
       try { bar.setPointerCapture(e.pointerId); } catch(_){}
-
       const mode = e.target.classList.contains('handle-left') ? 'left'
                  : e.target.classList.contains('handle-right') ? 'right'
                  : 'move';
-
       const layer = this.lottieData.layers[layerIndex];
       const startX = e.clientX;
       const startIp = layer.ip || 0;
       const startOp = layer.op || 0;
       const startLeft = startIp * this.pxPerFrame;
       const startWidth = Math.max((startOp - startIp) * this.pxPerFrame, 12);
-
       let moved = false;
+
       const onMove = ev => {
         const dx = ev.clientX - startX;
         if (Math.abs(dx) > 2) moved = true;
@@ -803,11 +944,9 @@ class LottieEditor extends HTMLElement {
           bar.style.left = newLeft + 'px';
           bar.style.width = (startLeft + startWidth - newLeft) + 'px';
         } else if (mode === 'right'){
-          const newW = Math.max(12, startWidth + dx);
-          bar.style.width = newW + 'px';
+          bar.style.width = Math.max(12, startWidth + dx) + 'px';
         }
       };
-
       const onUp = ev => {
         bar.removeEventListener('pointermove', onMove);
         bar.removeEventListener('pointerup', onUp);
@@ -815,41 +954,30 @@ class LottieEditor extends HTMLElement {
 
         if (!moved){
           this.selectedLayerIndex = layerIndex;
-          this.renderLayers();
-          this.renderTimeline();
-          this.renderProps();
+          if (this.activeEasing) this.activeEasing = null;
+          this.renderLayers(); this.renderTimeline(); this.renderProps();
           return;
         }
-
         const dx = ev.clientX - startX;
         const deltaFrames = Math.round(dx / this.pxPerFrame);
-
         if (mode === 'move'){
           if (deltaFrames !== 0) this.shiftLayerTime(layerIndex, deltaFrames);
           else this.renderTimeline();
         } else if (mode === 'left'){
           const newIp = clamp(startIp + deltaFrames, 0, startOp - 1);
           layer.ip = newIp;
-          this.updatePreview();
-          this.renderTimeline();
-          this.renderProps();
-          this.refreshJsonIfVisible();
+          this.updatePreview(); this.renderTimeline(); this.renderProps(); this.refreshJsonIfVisible();
         } else if (mode === 'right'){
           const newOp = Math.max(startIp + 1, startOp + deltaFrames);
           layer.op = newOp;
-          this.updatePreview();
-          this.renderTimeline();
-          this.renderProps();
-          this.refreshJsonIfVisible();
+          this.updatePreview(); this.renderTimeline(); this.renderProps(); this.refreshJsonIfVisible();
         }
       };
-
       bar.addEventListener('pointermove', onMove);
       bar.addEventListener('pointerup', onUp);
     });
   }
 
-  // ========== Playhead drag ==========
   attachPlayheadDrag(el){
     const startDrag = (e) => {
       e.preventDefault(); e.stopPropagation();
@@ -886,10 +1014,7 @@ class LottieEditor extends HTMLElement {
     l.ip = Math.max(0, (l.ip || 0) + delta);
     l.op = Math.max(l.ip + 1, (l.op || 0) + delta);
     l.st = Math.max(0, (l.st || 0) + delta);
-    this.updatePreview();
-    this.renderTimeline();
-    this.renderProps();
-    this.refreshJsonIfVisible();
+    this.updatePreview(); this.renderTimeline(); this.renderProps(); this.refreshJsonIfVisible();
   }
 
   updatePlayhead(){
@@ -901,7 +1026,7 @@ class LottieEditor extends HTMLElement {
     this.curEl.textContent = Math.round(this.currentFrame);
   }
 
-  // ========== Воспроизведение ==========
+  // ========== Playback ==========
   togglePlay(){ this.isPlaying ? this.pause() : this.play(); }
   play(){
     if (this.isPlaying) return;
@@ -924,9 +1049,7 @@ class LottieEditor extends HTMLElement {
     if (this.animInstance){
       try { this.animInstance.goToAndStop(0, true); } catch(_){}
     }
-    this.updatePlayhead();
-    this.updateFrameDisplay();
-    this.renderProps();
+    this.updatePlayhead(); this.updateFrameDisplay(); this.renderProps();
   }
   tick(){
     if (!this.isPlaying) return;
@@ -943,7 +1066,7 @@ class LottieEditor extends HTMLElement {
     this.rafId = requestAnimationFrame(()=>this.tick());
   }
 
-  // ========== Свойства ==========
+  // ========== Props ==========
   renderProps(){
     const i = this.selectedLayerIndex;
     if (i < 0 || !this.lottieData.layers[i]){
@@ -989,7 +1112,7 @@ class LottieEditor extends HTMLElement {
       }
     }
 
-    const kfAnimated = (p) => getPath(layer, p)?.a === 1;
+    const isAnimated = (p) => getPath(layer, p)?.a === 1;
     const kfHere = (p) => {
       const prop = getPath(layer, p);
       if (!prop || prop.a !== 1) return false;
@@ -998,8 +1121,12 @@ class LottieEditor extends HTMLElement {
     const kfChips = (p) => {
       const prop = getPath(layer, p);
       if (!prop || prop.a !== 1) return '';
+      const active = this.activeEasing?.path === p;
       return `<div class="kf-chips">${
-        prop.k.map(k => `<span class="kf-chip" data-seek="${k.t}">${k.t}</span>`).join('')
+        prop.k.map(k => {
+          const isActive = active && this.activeEasing.frame === k.t;
+          return `<span class="kf-chip${isActive?' active':''}" data-seek="${k.t}" data-kf-path="${p}" data-kf-frame="${k.t}" title="Клик — перейти и открыть Easing">◆ ${k.t}</span>`;
+        }).join('')
       }</div>`;
     };
 
@@ -1007,11 +1134,40 @@ class LottieEditor extends HTMLElement {
       <div class="prop-row">
         <label>${label}</label>
         <input type="number" data-prop="${path}" value="${Math.round(getK(path) ?? 0)}">
-        <button class="kf-btn ${kfAnimated(path)?'on':''} ${kfHere(path)?'on':''}"
+        <button class="kf-btn ${isAnimated(path)?'on':''} ${kfHere(path)?'on':''}"
                 data-kf="${path}" title="Keyframe">◆</button>
       </div>
       ${kfChips(path)}
     `;
+
+    // Easing editor (если активен)
+    let easingHTML = '';
+    if (this.activeEasing){
+      const path = this.activeEasing.path;
+      const prop = getPath(layer, path);
+      if (prop && prop.a === 1){
+        const kfIdx = prop.k.findIndex(k => k.t === this.activeEasing.frame);
+        if (kfIdx >= 0){
+          const kf = prop.k[kfIdx];
+          const isLast = kfIdx === prop.k.length - 1;
+          if (isLast){
+            easingHTML = `
+              <div class="easing-editor">
+                <h4>
+                  <span class="easing-title">Easing: ${path} @ ${kf.t}</span>
+                  <button class="easing-close" data-action="close-easing">×</button>
+                </h4>
+                <div class="easing-readout" style="color:#f88;">
+                  Последний keyframe — нет исходящего сегмента.
+                </div>
+              </div>`;
+          } else {
+            const { p1, p2 } = readEasing(kf);
+            easingHTML = this.buildEasingEditor(path, kf, p1, p2);
+          }
+        }
+      }
+    }
 
     this.propsContainer.innerHTML = `
       <h3>Слой ${i}</h3>
@@ -1020,8 +1176,8 @@ class LottieEditor extends HTMLElement {
       <div class="prop-row"><label>Out</label><input type="number" data-prop="op" value="${layer.op||0}"></div>
       <div class="prop-row"><label>St</label><input type="number" data-prop="st" value="${layer.st||0}"></div>
       <div class="prop-row" style="gap:6px;">
-        <button class="danger-btn secondary-btn" style="margin:0" data-action="move-up" ${i===0?'disabled':''}>↑ Выше</button>
-        <button class="danger-btn secondary-btn" style="margin:0" data-action="move-down" ${i===this.lottieData.layers.length-1?'disabled':''}>↓ Ниже</button>
+        <button class="danger-btn secondary" style="margin:0" data-action="move-up" ${i===0?'disabled':''}>↑ Выше</button>
+        <button class="danger-btn secondary" style="margin:0" data-action="move-down" ${i===this.lottieData.layers.length-1?'disabled':''}>↓ Ниже</button>
       </div>
 
       <h4>Transform</h4>
@@ -1030,6 +1186,8 @@ class LottieEditor extends HTMLElement {
       ${btn('ks.s.0', 'Scale')}
       ${btn('ks.r',   'Rotate')}
       ${btn('ks.o',   'Opacity')}
+
+      ${easingHTML}
 
       ${layer.ty === 4 ? `
         <h4>Заливка</h4>
@@ -1043,11 +1201,142 @@ class LottieEditor extends HTMLElement {
         <label>Цвет <input type="color" data-prop="text.fc" value="${textColor}"></label>
       ` : ''}
 
-      <button class="danger-btn" data-action="duplicate-layer" style="background:var(--accent)">Дублировать</button>
+      <button class="danger-btn secondary" data-action="duplicate-layer">Дублировать</button>
       <button class="danger-btn" data-action="delete-layer">Удалить слой</button>
     `;
   }
 
+  buildEasingEditor(path, kf, p1, p2){
+    // SVG: 200x200, padding 20, рабочая область 160x160
+    const pad = 20, size = 200, inner = size - pad * 2;
+    const toSvg = (x, y) => [pad + x * inner, pad + (1 - y) * inner];
+
+    const [x0, y0] = toSvg(0, 0);
+    const [x3, y3] = toSvg(1, 1);
+    const [c1x, c1y] = toSvg(p1[0], p1[1]);
+    const [c2x, c2y] = toSvg(p2[0], p2[1]);
+
+    // Grid lines
+    let gridSVG = '';
+    for (let i = 0; i <= 4; i++){
+      const t = i / 4;
+      const [gx] = toSvg(t, 0);
+      const [, gy] = toSvg(0, t);
+      gridSVG += `<line class="bezier-grid-line" x1="${gx}" y1="${pad}" x2="${gx}" y2="${size - pad}"/>`;
+      gridSVG += `<line class="bezier-grid-line" x1="${pad}" y1="${gy}" x2="${size - pad}" y2="${gy}"/>`;
+    }
+
+    const presetButtons = Object.keys(EASING_PRESETS).map(name => 
+      `<button data-preset="${name}">${name}</button>`
+    ).join('');
+
+    return `
+      <div class="easing-editor">
+        <h4>
+          <span class="easing-title">Easing: ${path} @ ${kf.t}</span>
+          <button class="easing-close" data-action="close-easing" title="Закрыть">×</button>
+        </h4>
+        <div class="easing-svg-wrap">
+          <svg class="easing-svg" viewBox="0 0 ${size} ${size}" data-easing-path="${path}" data-easing-frame="${kf.t}">
+            ${gridSVG}
+            <line class="bezier-axis" x1="${pad}" y1="${size-pad}" x2="${size-pad}" y2="${size-pad}"/>
+            <line class="bezier-axis" x1="${pad}" y1="${pad}" x2="${pad}" y2="${size-pad}"/>
+            <line class="bezier-diagonal" x1="${x0}" y1="${y0}" x2="${x3}" y2="${y3}"/>
+            <line class="bezier-handle-line" x1="${x0}" y1="${y0}" x2="${c1x}" y2="${c1y}"/>
+            <line class="bezier-handle-line" x1="${x3}" y1="${y3}" x2="${c2x}" y2="${c2y}"/>
+            <path class="bezier-curve" d="M ${x0} ${y0} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${x3} ${y3}"/>
+            <circle class="bezier-endpoint" cx="${x0}" cy="${y0}" r="3"/>
+            <circle class="bezier-endpoint" cx="${x3}" cy="${y3}" r="3"/>
+            <circle class="bezier-handle" data-handle="1" cx="${c1x}" cy="${c1y}" r="6"/>
+            <circle class="bezier-handle" data-handle="2" cx="${c2x}" cy="${c2y}" r="6"/>
+          </svg>
+        </div>
+        <div class="easing-presets">${presetButtons}</div>
+        <div class="easing-readout">
+          P1: (${p1[0].toFixed(2)}, ${p1[1].toFixed(2)}) &nbsp; P2: (${p2[0].toFixed(2)}, ${p2[1].toFixed(2)})
+        </div>
+      </div>
+    `;
+  }
+
+  // ========== Easing drag ==========
+  startEasingDrag(handle, e){
+    e.preventDefault();
+    const svg = handle.closest('.easing-svg');
+    if (!svg) return;
+    const path = svg.dataset.easingPath;
+    const frame = parseInt(svg.dataset.easingFrame, 10);
+    const handleNum = parseInt(handle.dataset.handle, 10);
+
+    try { svg.setPointerCapture(e.pointerId); } catch(_){}
+
+    const pad = 20, size = 200, inner = size - pad * 2;
+
+    const onMove = ev => {
+      const rect = svg.getBoundingClientRect();
+      // Переводим клиентские координаты в координаты SVG viewBox
+      const svgX = (ev.clientX - rect.left) / rect.width * size;
+      const svgY = (ev.clientY - rect.top) / rect.height * size;
+      // Из SVG в (0..1) с инверсией Y
+      let nx = (svgX - pad) / inner;
+      let ny = 1 - (svgY - pad) / inner;
+      // Ограничения: x ∈ [0,1], y ∈ [-1, 2]
+      nx = clamp(nx, 0, 1);
+      ny = clamp(ny, -1, 2);
+
+      const layer = this.lottieData.layers[this.selectedLayerIndex];
+      if (!layer) return;
+      const prop = getPath(layer, path);
+      if (!prop || prop.a !== 1) return;
+      const kf = prop.k.find(k => k.t === frame);
+      if (!kf) return;
+      const cur = readEasing(kf);
+
+      if (handleNum === 1) cur.p1 = [nx, ny];
+      else cur.p2 = [nx, ny];
+
+      writeEasing(kf, cur.p1, cur.p2);
+
+      // Обновляем SVG визуально
+      const toSvg = (x, y) => [pad + x * inner, pad + (1 - y) * inner];
+      const [c1x, c1y] = toSvg(cur.p1[0], cur.p1[1]);
+      const [c2x, c2y] = toSvg(cur.p2[0], cur.p2[1]);
+      const [x0, y0] = toSvg(0, 0);
+      const [x3, y3] = toSvg(1, 1);
+
+      const handles = svg.querySelectorAll('.bezier-handle');
+      handles[0].setAttribute('cx', c1x); handles[0].setAttribute('cy', c1y);
+      handles[1].setAttribute('cx', c2x); handles[1].setAttribute('cy', c2y);
+
+      const lines = svg.querySelectorAll('.bezier-handle-line');
+      lines[0].setAttribute('x2', c1x); lines[0].setAttribute('y2', c1y);
+      lines[1].setAttribute('x2', c2x); lines[1].setAttribute('y2', c2y);
+
+      svg.querySelector('.bezier-curve').setAttribute('d',
+        `M ${x0} ${y0} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${x3} ${y3}`);
+
+      // Readout
+      const readout = svg.closest('.easing-editor').querySelector('.easing-readout');
+      if (readout){
+        readout.textContent = `P1: (${cur.p1[0].toFixed(2)}, ${cur.p1[1].toFixed(2)})  P2: (${cur.p2[0].toFixed(2)}, ${cur.p2[1].toFixed(2)})`;
+      }
+    };
+
+    const onUp = ev => {
+      svg.removeEventListener('pointermove', onMove);
+      svg.removeEventListener('pointerup', onUp);
+      try { svg.releasePointerCapture(ev.pointerId); } catch(_){}
+      // Обновить превью и JSON
+      this.updatePreview();
+      this.renderTimeline();
+      this.refreshJsonIfVisible();
+    };
+
+    svg.addEventListener('pointermove', onMove);
+    svg.addEventListener('pointerup', onUp);
+  }
+
+  // ========== Evaluate ==========
   evaluateProp(prop, frame){
     if (prop.a !== 1 || !Array.isArray(prop.k) || !prop.k.length) return prop.k;
     const kfs = prop.k;
@@ -1078,6 +1367,7 @@ class LottieEditor extends HTMLElement {
     return null;
   }
 
+  // ========== Props input ==========
   onPropInput(e){
     const el = e.target;
     if (!el.dataset.prop) return;
@@ -1100,7 +1390,6 @@ class LottieEditor extends HTMLElement {
       this.updatePreview(); this.renderTimeline(); this.refreshJsonIfVisible();
       return;
     }
-
     if (prop.startsWith('ks.')){
       const parts = prop.split('.');
       const propName = parts[1];
@@ -1128,11 +1417,9 @@ class LottieEditor extends HTMLElement {
         if (idx !== null && Array.isArray(p.k)) p.k[idx] = val;
         else p.k = val;
       }
-      this.updatePreview(); this.renderTimeline();
-      this.refreshJsonIfVisible();
+      this.updatePreview(); this.renderTimeline(); this.refreshJsonIfVisible();
       return;
     }
-
     if (prop === 'fill'){
       const fl = this.findFill(layer);
       if (fl && fl.c){
@@ -1147,7 +1434,6 @@ class LottieEditor extends HTMLElement {
       }
       return;
     }
-
     if (prop.startsWith('text.')){
       const sub = prop.slice(5);
       const doc = layer.t?.d?.k?.[0]?.s;
@@ -1167,17 +1453,43 @@ class LottieEditor extends HTMLElement {
     }
   }
 
+  // ========== Props click ==========
   onPropClick(e){
+    // Пресет easing
+    const presetBtn = e.target.closest('[data-preset]');
+    if (presetBtn && this.activeEasing){
+      const name = presetBtn.dataset.preset;
+      const vals = EASING_PRESETS[name];
+      if (vals){
+        this.applyEasingToActive([vals[0], vals[1]], [vals[2], vals[3]]);
+      }
+      return;
+    }
+
+    // kf-chip: переход + открытие easing
     const chip = e.target.closest('.kf-chip');
     if (chip){
       const f = parseFloat(chip.dataset.seek);
+      const path = chip.dataset.kfPath;
+      const frame = parseFloat(chip.dataset.kfFrame);
       this.currentFrame = f;
       if (this.animInstance) try { this.animInstance.goToAndStop(f, true); } catch(_){}
-      this.updatePlayhead(); this.updateFrameDisplay(); this.renderProps();
+      this.activeEasing = { path, frame };
+      this.updatePlayhead();
+      this.updateFrameDisplay();
+      this.renderProps();
       return;
     }
+
     const btn = e.target.closest('button');
     if (!btn) return;
+
+    if (btn.dataset.action === 'close-easing'){
+      this.activeEasing = null;
+      this.renderProps();
+      return;
+    }
+
     if (btn.dataset.kf){ this.toggleKeyframe(btn.dataset.kf); return; }
 
     const a = btn.dataset.action;
@@ -1186,6 +1498,7 @@ class LottieEditor extends HTMLElement {
       if (!confirm('Удалить слой?')) return;
       this.lottieData.layers.splice(this.selectedLayerIndex, 1);
       this.selectedLayerIndex = -1;
+      this.activeEasing = null;
       this.updatePreview(); this.renderLayers(); this.renderTimeline();
       this.renderProps(); this.refreshJsonIfVisible();
       return;
@@ -1206,8 +1519,7 @@ class LottieEditor extends HTMLElement {
       const [l] = this.lottieData.layers.splice(i, 1);
       this.lottieData.layers.splice(i-1, 0, l);
       this.selectedLayerIndex = i-1;
-      this.renderLayers(); this.renderTimeline(); this.renderProps();
-      this.refreshJsonIfVisible();
+      this.renderLayers(); this.renderTimeline(); this.renderProps(); this.refreshJsonIfVisible();
       return;
     }
     if (a === 'move-down'){
@@ -1217,13 +1529,26 @@ class LottieEditor extends HTMLElement {
       const [l] = this.lottieData.layers.splice(i, 1);
       this.lottieData.layers.splice(i+1, 0, l);
       this.selectedLayerIndex = i+1;
-      this.renderLayers(); this.renderTimeline(); this.renderProps();
-      this.refreshJsonIfVisible();
+      this.renderLayers(); this.renderTimeline(); this.renderProps(); this.refreshJsonIfVisible();
       return;
     }
   }
 
-  // ◆ — toggle keyframe на текущем кадре
+  applyEasingToActive(p1, p2){
+    if (!this.activeEasing) return;
+    const layer = this.lottieData.layers[this.selectedLayerIndex];
+    if (!layer) return;
+    const prop = getPath(layer, this.activeEasing.path);
+    if (!prop || prop.a !== 1) return;
+    const kf = prop.k.find(k => k.t === this.activeEasing.frame);
+    if (!kf) return;
+    writeEasing(kf, p1, p2);
+    this.updatePreview();
+    this.renderTimeline();
+    this.renderProps();
+    this.refreshJsonIfVisible();
+  }
+
   toggleKeyframe(path){
     const i = this.selectedLayerIndex;
     if (i < 0) return;
@@ -1243,29 +1568,29 @@ class LottieEditor extends HTMLElement {
     } else {
       const existing = p.k.find(k => k.t === f);
       if (existing){
-        // удалить, если их больше одного
         if (p.k.length > 1){
           p.k = p.k.filter(k => k.t !== f);
+          if (this.activeEasing?.path === path && this.activeEasing.frame === f){
+            this.activeEasing = null;
+          }
         } else {
-          // единственный — превратить обратно в static
           p.a = 0;
           p.k = existing.s;
+          this.activeEasing = null;
         }
       } else {
         const sample = this.evaluateProp(p, f);
-        const newKf = { t: f, s: Array.isArray(sample) ? [...sample] : sample };
-        p.k.push(newKf);
+        p.k.push({ t: f, s: Array.isArray(sample) ? [...sample] : sample });
         p.k.sort((a,b)=>a.t-b.t);
         p.k.forEach((k, ii) => {
           if (ii < p.k.length-1 && !k.i){ k.i = {x:[0.5],y:[0.5]}; k.o = {x:[0.5],y:[0.5]}; }
         });
       }
     }
-    this.updatePreview(); this.renderTimeline(); this.renderProps();
-    this.refreshJsonIfVisible();
+    this.updatePreview(); this.renderTimeline(); this.renderProps(); this.refreshJsonIfVisible();
   }
 
-  // ========== Добавление слоёв ==========
+  // ========== Add layers ==========
   addShapeLayer(type){
     const op = this.lottieData.op || 90;
     const ind = nextLayerInd(this.lottieData);
@@ -1273,6 +1598,7 @@ class LottieEditor extends HTMLElement {
     const layer = makeShapeLayer(name, type, 100, 100, [0.4,0.6,1,1], 0, op, ind);
     this.lottieData.layers.unshift(layer);
     this.selectedLayerIndex = 0;
+    this.activeEasing = null;
     this.updatePreview(); this.renderLayers(); this.renderTimeline();
     this.renderProps(); this.refreshJsonIfVisible();
   }
@@ -1285,11 +1611,12 @@ class LottieEditor extends HTMLElement {
     }
     this.lottieData.layers.unshift(layer);
     this.selectedLayerIndex = 0;
+    this.activeEasing = null;
     this.updatePreview(); this.renderLayers(); this.renderTimeline();
     this.renderProps(); this.refreshJsonIfVisible();
   }
 
-  // ========== Code View ==========
+  // ========== Code view ==========
   toggleView(){
     this.viewMode = this.viewMode === 'visual' ? 'code' : 'visual';
     const b = this.toolbar.querySelector('[data-action="toggle-view"]');
@@ -1317,6 +1644,7 @@ class LottieEditor extends HTMLElement {
       this.currentFrame = Math.min(this.currentFrame, parsed.op || 0);
       this.totEl.textContent = parsed.op;
       this.selectedLayerIndex = -1;
+      this.activeEasing = null;
       this.updatePreview(); this.renderLayers(); this.renderTimeline(); this.renderProps();
     } catch(err){
       this.jsonError.textContent = '⚠ ' + err.message;
@@ -1324,7 +1652,7 @@ class LottieEditor extends HTMLElement {
     }
   }
 
-  // ========== Файлы ==========
+  // ========== Files ==========
   handleImport(e){
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1335,6 +1663,7 @@ class LottieEditor extends HTMLElement {
         this.lottieData = p;
         this.currentFrame = 0;
         this.selectedLayerIndex = -1;
+        this.activeEasing = null;
         this.totEl.textContent = p.op;
         this.updatePreview(); this.renderLayers(); this.renderTimeline();
         this.renderProps(); this.refreshJsonIfVisible();
