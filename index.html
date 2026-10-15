@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lottie Editor v0.5</title>
+<title>🍭 Bonbon | Lottie Editor v0.5</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
 <style>
 :root {
@@ -791,7 +791,6 @@ class LottieEditor extends HTMLElement {
       });
 
       this.attachRowDnD(item, i, this.layersList, () => {
-        // Найти выбранный слой после перестановки
         this.updatePreview();
         this.renderLayers();
         this.renderTimeline();
@@ -912,7 +911,6 @@ class LottieEditor extends HTMLElement {
       row.draggable = true;
       row.dataset.index = i;
 
-      // DnD для строки — переиспользуем attachRowDnD
       this.attachRowDnD(row, i, this.rowsInner, () => {
         this.updatePreview();
         this.renderLayers();
@@ -952,6 +950,17 @@ class LottieEditor extends HTMLElement {
         marker.title = paths.length
           ? `Keyframe @ ${f}: ${paths.join(', ')}\nКлик — открыть Easing`
           : `Keyframe @ ${f}`;
+
+        // Не даём pointerdown всплыть до .time-bar, иначе запустится drag слоя
+        marker.addEventListener('pointerdown', ev => {
+          ev.stopPropagation();
+        });
+        // Клик — открыть Easing-редактор для этого кадра
+        marker.addEventListener('click', ev => {
+          ev.stopPropagation();
+          this.openKeyframeFromMarker(marker);
+        });
+
         bar.appendChild(marker);
       });
 
@@ -981,7 +990,7 @@ class LottieEditor extends HTMLElement {
     return [...frames].sort((a,b)=>a-b);
   }
 
-  // Пуproperties (в пределах ks), у которых есть keyframe на кадре frame
+  // Пути свойств (в пределах ks), у которых есть keyframe на кадре frame
   collectKeyframePaths(layer, frame, prefix = 'ks'){
     const out = [];
     const walk = (obj, path) => {
@@ -990,9 +999,9 @@ class LottieEditor extends HTMLElement {
         if (obj.k.some(kf => kf.t === frame)) out.push(path);
         return;
       }
-      if (obj.ix !== undefined || obj.k !== undefined) return; // обычное свойство без анимации
+      if (obj.ix !== undefined || obj.k !== undefined) return;
       for (const key in obj){
-        if (key.startsWith('it') || key === 'shapes') continue; // не углубляемся в группы шейпов
+        if (key.startsWith('it') || key === 'shapes') continue;
         const v = obj[key];
         if (v && typeof v === 'object' && !Array.isArray(v)) walk(v, `${path}.${key}`);
       }
@@ -1006,7 +1015,7 @@ class LottieEditor extends HTMLElement {
     if (isNaN(frame)) return;
     let paths = [];
     try { paths = JSON.parse(marker.dataset.kfPaths || '[]'); } catch(_){}
-    const bar = marker.closest('.time-bar');
+
     const row = marker.closest('.timeline-row');
     const layerIndex = row ? parseInt(row.dataset.index, 10) : this.selectedLayerIndex;
     if (isNaN(layerIndex)) return;
@@ -1015,21 +1024,16 @@ class LottieEditor extends HTMLElement {
     this.currentFrame = frame;
     if (this.animInstance) try { this.animInstance.goToAndStop(frame, true); } catch(_){}
 
-    // Выбираем свойство: текущее activeEasing если оно содержит этот кадр,
-    // иначе — первое animated-свойство с этим keyframe (или уже активный chip)
     const layer = this.lottieData.layers[layerIndex];
     let chosen = null;
     if (layer){
+      // Сохраняем текущее выбранное свойство, если оно валидно для этого слоя и кадра
       if (this.activeEasing && this.activeEasing.frame === frame
           && getPath(layer, this.activeEasing.path)?.a === 1
           && getPath(layer, this.activeEasing.path).k.some(k => k.t === frame)){
         chosen = this.activeEasing.path;
       } else {
-        // среди чипов правой панели ищем тот же кадр — берём последний совпавший chip
-        const chips = [...this.propsContainer.querySelectorAll('.kf-chip')]
-          .filter(c => parseFloat(c.dataset.kfFrame) === frame);
-        const chipPaths = chips.map(c => c.dataset.kfPath);
-        chosen = chipPaths[chipPaths.length - 1] || paths[0] || null;
+        chosen = paths[0] || null;
       }
     }
     this.activeEasing = chosen ? { path: chosen, frame } : null;
@@ -1039,7 +1043,7 @@ class LottieEditor extends HTMLElement {
     this.renderLayers();
     this.renderTimeline();
     this.renderProps();
-    // Прокрутка к активному чипу в правой панели
+
     const activeChip = this.propsContainer.querySelector('.kf-chip.active');
     if (activeChip) activeChip.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
@@ -1204,7 +1208,6 @@ class LottieEditor extends HTMLElement {
     const layer = this.lottieData.layers[i];
     const f = Math.round(this.currentFrame);
 
-    // Исправленный getK: понимает путь вида "ks.p" и "ks.p.0"
     const getK = (path) => {
       const parts = path.split('.');
       const lastPart = parts[parts.length - 1];
@@ -1269,7 +1272,6 @@ class LottieEditor extends HTMLElement {
       }</div>`;
     };
 
-    // propPath — для ◆ и чипов, inputPath — для числового input
     const btn = (propPath, inputPath, label) => `
       <div class="prop-row">
         <label>${label}</label>
@@ -1588,14 +1590,12 @@ class LottieEditor extends HTMLElement {
   }
 
   onPropClick(e){
-    // Physics-пресет
     const physBtn = e.target.closest('[data-phys-preset]');
     if (physBtn && this.activeEasing){
       this.applyPhysics(physBtn.dataset.physPreset);
       return;
     }
 
-    // Bezier-пресет
     const presetBtn = e.target.closest('[data-preset]');
     if (presetBtn && this.activeEasing){
       const vals = EASING_PRESETS[presetBtn.dataset.preset];
@@ -1603,7 +1603,6 @@ class LottieEditor extends HTMLElement {
       return;
     }
 
-    // kf-chip
     const chip = e.target.closest('.kf-chip');
     if (chip){
       const f = parseFloat(chip.dataset.seek);
@@ -1614,6 +1613,7 @@ class LottieEditor extends HTMLElement {
       this.activeEasing = { path, frame };
       this.updatePlayhead();
       this.updateFrameDisplay();
+      this.renderTimeline();
       this.renderProps();
       return;
     }
@@ -1624,6 +1624,7 @@ class LottieEditor extends HTMLElement {
     if (btn.dataset.action === 'close-easing'){
       this.activeEasing = null;
       this.renderProps();
+      this.renderTimeline();
       return;
     }
     if (btn.dataset.kf){ this.toggleKeyframe(btn.dataset.kf); return; }
@@ -1682,7 +1683,6 @@ class LottieEditor extends HTMLElement {
     this.updatePreview(); this.renderTimeline(); this.renderProps(); this.refreshJsonIfVisible();
   }
 
-  // Физический easing: заменяем сегмент на N keyframes, семплированных по кривой
   applyPhysics(key){
     const fn = PHYSICS_EASINGS[key];
     if (!fn || !this.activeEasing) return;
@@ -1699,7 +1699,6 @@ class LottieEditor extends HTMLElement {
     const newKFs = this.generatePhysicsKF(a.t, b.t, a.s, b.s, fn, steps);
     prop.k.splice(idx, 2, ...newKFs);
 
-    // Закрываем easing-редактор — сегмент перестроен, старая привязка невалидна
     this.activeEasing = null;
     this.updatePreview(); this.renderTimeline(); this.renderProps(); this.refreshJsonIfVisible();
   }
@@ -1719,7 +1718,6 @@ class LottieEditor extends HTMLElement {
       const fr = Math.round(startF + (endF - startF) * t);
       kfs.push({ t: fr, s });
     }
-    // Дедупликация по кадру
     const seen = new Set();
     const uniq = [];
     for (const kf of kfs){
@@ -1728,7 +1726,6 @@ class LottieEditor extends HTMLElement {
         uniq.push(kf);
       }
     }
-    // Проставляем линейные bezier i/o между сгенерированными kf
     for (let i = 0; i < uniq.length - 1; i++){
       uniq[i].i = {x:[0.5], y:[0.5]};
       uniq[i].o = {x:[0.5], y:[0.5]};
